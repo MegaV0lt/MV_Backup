@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=160909ß                                                                         #
+VERSION=160913ß                                                                         #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum und neueste Version: http://j.mp/1TblNNj                                        #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -13,12 +13,12 @@ VERSION=160909ß                                                                
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-# Sämtliche Einstellungen werden in der *.conf vorgenommen.
-# -> Bitte ab hier nichts mehr ändern!
-
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
 # Eine kurze Anleitung kann mit der Option -h aufgerufen werden.
+
+# Sämtliche Einstellungen werden in der *.conf vorgenommen.
+# -> Bitte ab hier nichts mehr ändern!
 
 if ((BASH_VERSINFO[0] < 4)) ; then  # Test, ob min. Bash Version 4.0
   echo 'Sorry, dieses Skript benötigt Bash Version 4.0 oder neuer!' 2>/dev/null
@@ -56,22 +56,28 @@ f_exit() {                             # Beenden und aufräumen $1 = ExitCode
   [[ -n "${exfrom[*]}" ]] && rm "${exfrom[*]}" 2>/dev/null
   [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR"  # Ordner für temporäre Dateien
   [[ "$EXIT" -ne 4 ]] && rm --force "$PIDFILE" 2>/dev/null  # PID-Datei entfernen
-  [[ -n "$MFS_PID" ]] && { echo '-> Beende Hintergrundüberwachung...'
-                           kill "$MFS_PID" &>/dev/null ;}  # Hintergrundüberwachung beenden
+  [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden
   exit "$EXIT"
+}
+
+f_mfs_kill() {
+  if [[ -n "$MFS_PID" ]] ; then
+    echo '-> Beende Hintergrundüberwachung...'
+    kill "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
+    ps --pid "$MFS_PID" &>/dev/null
+    if [[ $? -ne 0 ]] ; then  # Noch aktiv!
+      echo '!> Hintergrundüberwachung konnte nicht beendet werden! Versuche erneut...'
+      kill -9 "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
+    else
+      unset -v "MFS_PID"
+    fi
+  fi
 }
 
 f_remove_slash() {                     # "/" am Ende entfernen
   local tmp="$1"
   [[ ${#tmp} -gt 2 && "${tmp: -1}" == "/" ]] && tmp="${tmp%/}"
   echo "$tmp"
-}
-
-f_echo() {  # Escape-Sequenzen auch, wenn von echo nicht unterstützt!
-  local msg nl="\n"            # Zeilenvorschub
-  [[ "$1" == "-n" ]] && { nl="" ; shift ;}
-  msg="${1//\\e/\\033}"        # \e durch \033 ersetzen
-  printf "%b" "${msg}${nl}"    # Ausgabe am Bildschirm
 }
 
 # Wird in der Konsole angezeigt, wenn eine Option nicht angegeben oder definiert wurde
@@ -221,8 +227,9 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
     #echo "Transferiert (DRY-RUN): ${TRANSFERRED[@]}"
     case ${TRANSFERRED[7]} in
       *K) TDATA=${TRANSFERRED[7]%K} ; MINFREE=$((${TDATA%.*}/1024 + 1)) ;;  # 1K-999K
-      *M) TDATA=${TRANSFERRED[7]%M} ; MINFREE=$((${TDATA%.*} + 1)) ;;
+      *M) TDATA=${TRANSFERRED[7]%M} ; MINFREE=$((${TDATA%.*} + 1)) ;;       # MB +1
       *G) TDATA=${TRANSFERRED[7]%G} ; MINFREE=$((${TDATA%.*}*1024 + ${TDATA#*.}0)) ;;
+      *T) TDATA=${TRANSFERRED[7]%T} ; MINFREE=$((${TDATA%.*}*1024*1024 + ${TDATA#*.}0*1024)) ;;
       *) MINFREE=1 ;;  # 0-999 Bytes
     esac
   fi
@@ -325,10 +332,10 @@ fi
 ######################################### START #########################################
 
 # Wenn eine grafische Oberfläche vorhanden ist, wird u.a. "notify-send" für Benachrichtigungen verwendet, ansonsten immer "echo"
-NOTIFY="echo"
 if [[ -n "$DISPLAY" ]] ; then
-  NOTIFY="notify-send"
-  WALL="wall"
+  NOTIFY="notify-send" ; WALL="wall"
+else
+  NOTIFY="echo"
 fi
 
 tty --silent && clear
@@ -547,8 +554,7 @@ for PROFIL in "${P[@]}" ; do
           --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
         RC=$? ; [[ $RC -ne 0 ]] && { RSYNCRC+=("$RC") ; RSYNCPROF+=("$TITLE") ;}  # Profilname und Fehlercode merken
 
-        [[ -n "$MFS_PID" ]] && { echo '-> Beende Hintergrundüberwachung...'
-                                 kill "$MFS_PID" >/dev/null 2>> "$ERRLOG" ;}  # Hintergrundüberwachung beenden!
+        [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden!
         [[ -e "${TMPDIR}/.stopflag" ]] && FINISHEDTEXT='abgebrochen!'  # Platte voll!
 
         if [[ -z "$FINISHEDTEXT" ]] ; then  # Alte Daten nur löschen wenn nicht abgebrochen wurde!
@@ -617,8 +623,7 @@ for PROFIL in "${P[@]}" ; do
       R_TARGET="${TARGET}/${FILES_DIR}"  # Ordner für die gesicherten Dateien
       # nproc ist im Paket coreutils. Sollte auf allen Linux installationen verfügbar sein
       # Maximale Anzahl gleichzeitig laufender rsync-Prozesse (2 pro Kern)
-      maxthreads=$(($(nproc)*2)) || maxthreads=5  # Fallback
-      #maxthreads=2  # Maximale Anzahl gleichzeitig laufender rsync-Prozesse
+      maxthreads=$(($(nproc)*2)) || maxthreads=2  # Fallback
 
       f_countdown_wait  # Countdown vor dem Start anzeigen
 
@@ -691,7 +696,7 @@ for PROFIL in "${P[@]}" ; do
                     "${SOURCE}/${subfolder}/" "${R_TARGET}/${subfolder}/" </dev/null >/dev/null 2>> "$ERRLOG" &
             JOBS[$!]="${TITLE}_$cnt" # Array-Element=PID; Inhalt=Profilname mit Zähler
             echo "$!]" ; sleep 0.1   # Kleine Wartezeit, damit nicht alle rsyncs auf einmal starten
-            unset -v EXTRAEXCLUDE    # Zurücksetzen für den nächsten Durchlauf
+            unset -v "EXTRAEXCLUDE"  # Zurücksetzen für den nächsten Durchlauf
           fi
         done < <(find . -maxdepth $depth -type d)  # Die < <(commands) Syntax verarbeitet alles im gleichen Prozess. Änderungen von globalen Variablen sind so möglich
 
@@ -732,6 +737,8 @@ for PROFIL in "${P[@]}" ; do
           echo "== Logfile: $log ==" >> "$LOG" ; cat "$log" >> "$LOG"
           rm "$log" &>/dev/null
         done ; IFS="$OLDIFS"
+
+        [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden!
 
         if [[ -z "$FINISHEDTEXT" ]] ; then  # Alte Daten nur löschen wenn nicht abgebrochen wurde!
           # Funktion zum Löschen alter Backups aufrufen
