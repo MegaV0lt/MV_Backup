@@ -1,0 +1,86 @@
+
+MV_Backup.sh - Backup-Skript für Linux Bash
+Author: MegaV0lt, http://j.mp/cQIazU
+Forum und neueste Version: http://j.mp/1TblNNj
+Basiert auf dem RSYNC-BACKUP-Skript von:
+
+ Author:   JaiBee, http://www.321tux.de
+ Date:     2011-01-02  Version: 0.98
+ License:  Creative Commons "Namensnennung-Nicht-kommerziell-
+           Weitergabe unter gleichen Bedingungen 3.0 Unported "
+           [ http://creativecommons.org/licenses/by-nc-sa/3.0/deed.de ]
+
+Alle Anpassungen zum Skript, kann man hier und in der .conf nachlesen.
+Wer sich erkenntlich zeigen möchte, kann mir gerne einen kleinen Betrag zukommen
+lassen: => http://paypal.me/SteBlo
+Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
+
+
+ Neu:  Automatisches Ein- und Aushängen des Sicherungs-Ziels                           
+       Das Sicherungsziel wir automatisch Ein- und Ausgehängt, wenn in der fstab       
+       vorhanden (noauto)                                                              
+ Neu:  Entfernen von alten Sicherungen und Log-Dateien nach einstellbarer Zeit (Tage)  
+       Beispiel (Backups und Logs älter als 90 Tage löschen): -d 90                    
+       Wird im Snapshot-Modus nicht verwendet!                                         
+ Neu:  Konfiguration ausgelagert, um den Einsatz auf mehreren Systemen zu vereinfachen 
+       Wird automatisch geladen, wenn im selben Verzeichnis, Verzeichnid des Skripts   
+       oder im eigenen etc. Datei kann mit "-c mybkp.conf" angegeben werden            
+ Neu:  Konfiguration vereinfacht. Profilnummer muss nicht mehr von Hand geändert werden
+ Neu:  Quelle als FTP definierbar. Zum Einhängen wird curlftpfs benötigt.              
+ Neu:  Versand der Logs per eMail. Verschiedene Mailer werden unterstützt. Aufruf mit  
+       Parameter -e my@email.de (oder -e root)                                         
+ Neu:  eMail-Bericht mit Angaben zu Fehlern, Belegung der Sicherungen und der          
+       Sicherungsziele (Auflistung abschaltbar)                                        
+ Neu:  Versand von Logs per Mail abschalt- und begrenzbar (MAXLOGSIZE) [Vorgabe 1 MB]  
+ Neu:  Sicherungsziel kann Profilabhängig definiert werden (mount[]). Automatisches    
+       Ein- und Aushängen wird unterstützt, wenn in der fstab vorhanden (noauto)       
+ Neu:  Option für "Snapshot"-Backup eingebaut. Konfiguration mittels mode[] im Profil  
+ Neu:  eMail nur im Fehlerfall senden. Konfiguration mittels Variable MAILONLYERRORS   
+       im Profil oder mit Parameter -f beim Aufruf                                     
+ Neu:  Globale (.conf) Pre- und Post Befehle können definiert werden. Variablen müssen 
+       in der .conf definiert werden. Fehler werden (noch) nicht geloggt, da die       
+       Ausführung vor bzw. nach der Sicherung statt findet                             
+ Neu:  Option FILES_DIR in der Konfiguration. Ordner in dem die Sicherung gespeichert  
+       wird. Vorgabe ist "_DATEIEN". Der Ordner wird im Sicherungsziel angelegt. Nur   
+       Name angeben; keine "/"                                                         
+ Neu:  Experimenteller "Multi-rsync-Modus" kann im .conf aktivert werden. Es werden    
+       für jeden Ordner im Stammverzeichnis einzelne rsync-Prozesse gestartet.         
+       ACHTUNG: Noch nicht ausreichend getestet. Auf eigene Gefahr zu verwenden!       
+       (So wie das ganze Skript)                                                       
+ Neu:  Parameter --del-old-source[=]<Wert> zum löschen von alten Dateien in der Quelle 
+       Beispiel: "--del-old-source 40" löscht Dateien älter als 40 Tage in der Quelle, 
+       wenn die Datei auch im Ziel gefunden wird. Funktioniert nur mit einem Profil!   
+       Wird im Snapshot-Modus nicht verwendet!                                         
+01.08.2016
+ Neu:  Profiloption: minfree[$nr]. Wert in Megabyte. Freier Platz, der auf dem Ziel    
+       mindestens frei sein muss. Bei Unterschreitung wird eine Warnung angezeigt und  
+       in das Fehlerlog geschrieben. Das Backup wird NICHT angehalten! (siehe unten)   
+       (Nur im Modus normal)                                                           
+ Neu:  Profiloption: skip_full[$nr]. Wenn gesetzt, wird das Profil nicht gesichert,    
+       wenn der angegebene freie Platz (minfree[$nr]) nicht vorhanden ist              
+       (Nur im Modus normal)                                                           
+10.08.2016
+ Neu:  Profiloption: dry_run[$nr]. Wenn gesetzt, wird vor dem Backup mit einem         
+       (Dry-Run) geprüft, ob noch genug Platz auf dem Ziel vorhanden ist (Langsam).    
+       Überschreibt minfree[$nr]. Kann mit skip_full[$nr] verwendet werden             
+       (Nur im Modus normal)                                                           
+17.08.2016
+ Neu:  Profiloption: minfree_bg[$nr]. Wert in Megabyte. Freier Platz, der auf dem Ziel 
+       mindestens frei sein muss. Bei Unterschreitung wird eine Warnung angezeigt und  
+       in das Fehlerlog geschrieben. Das Backup wird abgebrochen! Darf nicht mit       
+       minfree[$nr] verwendet werden. Wird alle 5 Minuten geprüft.                     
+       (Nur im Modus normal)                                                           
+20.08.2016
+ Neu:  Die Optionen minfree[$nr], skip_full[$nr], dry_run[$nr] und minfree_bg[$nr]     
+       nun auch im Modus Multi verfügbar.                                              
+       Beenden der Hintergrundüberwachung wenn STRG-C gedrückt wird.                   
+21.08.2016
+ Neu:  Hinweis bei Abbruch durch STRG-C, dass keine Mail versendet wird bzw.           
+       POST_ACTION nicht ausgeführt wird                                               
+22.08.2016
+ Neu:  Anzeige ob Hintergrundüberwachung verwendet wird. Nur im Modus Normal
+       und Multi
+09.09.2016
+ Neu:  Globale Option MFS_TIMEOUT: Zeitabstand in Sekunden, in der der Hintergrundprozess
+       (Siehe Profiloption minfree_bg[]) den freien Speicherplatz auf dem Ziel überprüft.
+       Vorgabe ist 300 Sekunden (5 Minuten)
