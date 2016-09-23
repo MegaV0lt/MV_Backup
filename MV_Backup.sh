@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=160913ß                                                                         #
+VERSION=160923                                                                         #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum und neueste Version: http://j.mp/1TblNNj                                        #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -40,7 +40,7 @@ declare -A _arg JOBS  # Array JOBS wird für den Multi rsync-Modus benötigt
 
 ###################################### FUNKTIONEN #######################################
 
-trap 'f_exit 3' SIGHUP SIGINT SIGQUIT SIGABRT  # Bei unerwarteten Ende aufräumen
+trap 'f_exit 3' SIGHUP SIGINT SIGQUIT SIGABRT  # Bei unerwarteten Ende (Strg-C) aufräumen
 
 DEBUG() {  # Verwenden mit "DEBUG echo $VAR; DEBUG set -x"
   [[ "$_DEBUG" == "on" ]] && { "$@" || : ;}
@@ -48,7 +48,7 @@ DEBUG() {  # Verwenden mit "DEBUG echo $VAR; DEBUG set -x"
 
 f_exit() {                             # Beenden und aufräumen $1 = ExitCode
   local EXIT="${1:-0}"                 # Wenn leer, dann 0
-  if [[ "$EXIT" -eq 3 ]] ; then        # STRG-C
+  if [[ "$EXIT" -eq 3 ]] ; then        # Strg-C
     echo -e "\n=> Aufräumen und beenden [$$]"
     [[ -n "$POST_ACTION" ]] && echo "Achtung: POST_ACTION (Profil ${TITLE}) wird nicht ausgeführt!"
     [[ -n "$MAILADRESS" ]] && echo 'Achtung: Es erfolgt kein eMail-Versand!'
@@ -117,10 +117,10 @@ f_settings() {
     for i in "${!arg[@]}" ; do  # Anzahl der vorhandenen Profile ermitteln
       if [[ "${arg[$i]}" == "$PROFIL" ]] ; then  # Wenn das gewünschte Profil gefunden wurde
         # RSYNC_OPT, RSYNC_OPT_SNAPSHOT und MOUNT wieder herstelen
-        [[ -n "$_RSYNC_OPT" ]] && { RSYNC_OPT=("${_RSYNC_OPT[@]}") ; unset -v _RSYNC_OPT ;}
-        [[ -n "$_RSYNC_OPT_SNAPSHOT" ]] && { RSYNC_OPT_SNAPSHOT=("${_RSYNC_OPT_SNAPSHOT[@]}") ; unset -v _RSYNC_OPT_SNAPSHOT ;}
-        [[ -n "$_MOUNT" ]] && { MOUNT="$_MOUNT" ; unset -v _MOUNT ;}
-        [[ "$MOUNT" == "0" ]] && unset -v MOUNT  # MOUNT war nicht gesetzt
+        [[ -n "$_RSYNC_OPT" ]] && { RSYNC_OPT=("${_RSYNC_OPT[@]}") ; unset -v "_RSYNC_OPT" ;}
+        [[ -n "$_RSYNC_OPT_SNAPSHOT" ]] && { RSYNC_OPT_SNAPSHOT=("${_RSYNC_OPT_SNAPSHOT[@]}") ; unset -v "_RSYNC_OPT_SNAPSHOT" ;}
+        [[ -n "$_MOUNT" ]] && { MOUNT="$_MOUNT" ; unset -v "_MOUNT" ;}
+        [[ "$MOUNT" == "0" ]] && unset -v "MOUNT"  # MOUNT war nicht gesetzt
         TITLE="${title[$i]}"   ; ARG="${arg[$i]}"       ; MODE="${mode[$i]}"
         SOURCE="${source[$i]}" ; FTPSRC="${ftpsrc[$i]}" ; FTPMNT="${ftpmnt[$i]}"
         TARGET="${target[$i]}" ; LOG="${log[$i]}"       ; EXFROM="${exfrom[$i]}"
@@ -245,7 +245,7 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
     fi
   else
     [[ -n "$drylog" ]] && echo -e "Testlauf (DRYRUN) von rsync ergab:\nBenötigt: $MINFREE MB Verfügbar: $DF_FREE MB" >> "$LOG"
-    unset -v SKIP_FULL  # Genug Platz! Variable löschen, falls gesetzt
+    unset -v "SKIP_FULL"  # Genug Platz! Variable löschen, falls gesetzt
   fi
 }
 
@@ -284,8 +284,8 @@ if [[ -f "$PIDFILE" ]] ; then  # PID-Datei existiert
   ps --pid "$PID" &>/dev/null
   if [[ $? -eq 0 ]] ; then     # Skript läuft schon!
     echo -e "\e[1;41m FEHLER \e[0;1m Skript läuft bereits!\e[0m (PID: $PID)"
-    f_exit 4                   # PID-Datei nicht löschen
-  else  ## Prozess nicht gefunden. PID-Datei überschreiben
+    f_exit 4                   # Beenden aber PID-Datei nicht löschen
+  else  # Prozess nicht gefunden. PID-Datei überschreiben
     echo "$$" > "$PIDFILE" \
       || { echo -e "\e[1;41m FEHLER \e[0;1m PID-Datei konnte nicht überschrieben werden!\e[0m" ; f_exit 1 ;}
   fi
@@ -518,7 +518,7 @@ for PROFIL in "${P[@]}" ; do
   # Ggf. Zielverzeichnis erstellen
   [[ ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" || f_exit 1 ;}
   [[ -e "${TMPDIR}/.stopflag" ]] && rm --force "${TMPDIR}/.stopflag" &>/dev/null
-  unset -v FINISHEDTEXT MFS_PID
+  unset -v "FINISHEDTEXT" "MFS_PID"
 
   case $MODE in
     N) ### Normales Backup (inkl. customBak)
@@ -538,7 +538,7 @@ for PROFIL in "${P[@]}" ; do
       elif [[ $MINFREE -gt 0 ]] ; then  # DRY_RUN hat vorrang
         f_check_free_space  # Prüfen, ob auf dem Ziel genug Platz ist
       elif [[ $MINFREE_BG -gt 0 ]] ; then  # Prüfung im Hintergrund
-        unset -v SKIP_FULL  # Löschen, falls gesetzt
+        unset -v "SKIP_FULL"  # Löschen, falls gesetzt
         echo -n "-> Starte Hintergrundüberwachung..."
         f_monitor_free_space &  # Prüfen, ob auf dem Ziel genug Platz ist (Hintergrundprozess)
         MFS_PID=$! ; echo " PID: $MFS_PID"  # PID merken
@@ -611,7 +611,7 @@ for PROFIL in "${P[@]}" ; do
           mv "$TMPBAKDIR" "$BACKUPDIR" 2>> "$ERRLOG"
         fi
       fi
-      unset -v NOT_CHANGED  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
+      unset -v "NOT_CHANGED"  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
     ;;
     M) ### Multi rsync (Experimentell)! Quelle: www.krazyworks.com/making-rsync-faster
       # Ggf. Verzeichnis für gelöschte Dateien erstellen
@@ -637,7 +637,7 @@ for PROFIL in "${P[@]}" ; do
       elif [[ $MINFREE -gt 0 ]] ; then  # DRY_RUN hat vorrang
         f_check_free_space  # Prüfen, ob auf dem Ziel genug Platz ist
       elif [[ $MINFREE_BG -gt 0 ]] ; then  # Prüfung im Hintergrund
-        unset -v SKIP_FULL  # Löschen, falls gesetzt
+        unset -v "SKIP_FULL"  # Löschen, falls gesetzt
         echo -n "-> Starte Hintergrundüberwachung..."
         f_monitor_free_space &  # Prüfen, ob auf dem Ziel genug Platz ist (Hintergrundprozess)
         MFS_PID=$! ; echo " PID: $MFS_PID"  # PID merken
@@ -764,12 +764,12 @@ for PROFIL in "${P[@]}" ; do
   [[ -n "$MAILADRESS" ]] && { LOGFILES+=("$LOG") ; TARGETS+=("$TARGET") ; DEBUG echo -e "\nLOGFILES: ${LOGFILES[*]}\n\nTARGETS: ${TARGETS[*]}" ;}
 
   # Zuvor eingehängte FTP-Quelle wieder aushängen
-  [[ -n "$UNMOUNTFTP" ]] && { umount "$FTPMNT" ; unset -v UNMOUNTFTP ;}
+  [[ -n "$UNMOUNTFTP" ]] && { umount "$FTPMNT" ; unset -v "UNMOUNTFTP" ;}
 
   [[ ${RC:-0} -ne 0 ]] && ERRTEXT="\e[91mmit Fehler ($RC) \e[0;1m"
   echo -e "\a\n\n\e[1mProfil \"${TITLE}\" wurde ${ERRTEXT}${FINISHEDTEXT:=abgeschlossen}\e[0m\nWeitere Informationen sowie Fehlermeldungen sind in der Datei:\n\"${LOG}\" gespeichert.\n"
   [[ -s "$ERRLOG" ]] && echo -e "Fehlermeldungen von rsync wurden in der Datei:\n\"${ERRLOG}\" gespeichert.\n"
-  unset -v RC ERRTEXT           # $RC und $ERRTEXT zurücksetzen
+  unset -v "RC" "ERRTEXT"  # $RC und $ERRTEXT zurücksetzen
 done
 
 # eMail senden
@@ -780,23 +780,22 @@ if [[ -n "$MAILADRESS" ]] ; then
   TMP_ARCHIV="${TMPDIR}/${ARCHIV}"        # Pfad für das Archiv
   MAILFILE="${TMPDIR}/~Mail.txt"          # Mailfile im Arbeitsspeicher oder /tmp
   SUBJECT="Sicherungs-Bericht von $SELF_NAME auf $HOSTNAME" # Betreff der Mail
-  : "${MAXLOGSIZE:=$((1024*1024))}"       # Wenn leer dann default 1 MB
 
-  if [[ $MAXLOGSIZE -gt 0 ]] ; then       # Wurde nicht deaktiviert
+  if [[ ${MAXLOGSIZE:=$((1024*1024)) -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
     # Log(s) packen
     tar --create --absolute-names --auto-compress --file="$TMP_ARCHIV" "${LOGFILES[@]}" "${ERRLOGS[@]}"
     FILESIZE=$(stat -c %s "$TMP_ARCHIV")  # Größe des Archivs
     if [[ $FILESIZE -gt $MAXLOGSIZE ]] ; then
-      rm "$TMP_ARCHIV" &>/dev/null        # Archiv ist zu groß
-      TMP_ARCHIV="${TMP_ARCHIV}.txt"      # Info-Datei wenn das Archiv zu groß ist
-      echo 'Das Archiv mit den Logdatei(en) ist zu groß für den Versand per eMail.' > "$TMP_ARCHIV"
+      rm "$TMP_ARCHIV" &>/dev/null        # Archiv ist zu groß für den eMail-Versand
+      TMP_ARCHIV="${TMP_ARCHIV}.txt"      # Info-Datei als Ersatz
+      echo 'Die gepackte(n) Logdatei(en) sind zu groß für den Versand per eMail.' > "$TMP_ARCHIV"
       echo "Der eingestellte Wert für die Maximalgröße ist $MAXLOGSIZE Bytes" >> "$TMP_ARCHIV"
       echo -e "\n==> Liste der lokal angelegten Log-Datei(en):" >> "$TMP_ARCHIV"
       for file in "${LOGFILES[@]}" "${ERRLOGS[@]}" ; do
         echo "$file" >> "$TMP_ARCHIV"
       done
     fi
-  else # MAXLOGSIZE=0
+  else  # MAXLOGSIZE=0
     TMP_ARCHIV="${TMP_ARCHIV}.txt"        # Info-Datei
     echo "Das Senden von Logdateien ist deaktiviert (MAXLOGSZE=0)." > "$TMP_ARCHIV"
     echo -e "\n==> Liste der lokal angelegten Log-Datei(en):" >> "$TMP_ARCHIV"
@@ -812,7 +811,7 @@ if [[ -n "$MAILADRESS" ]] ; then
 
   if [[ ${#ERRLOGS[@]} -ge 1 ]] ; then
     echo -e "\n==> Zusätzlich wurde(n) ${#ERRLOGS[@]} Fehler-Log(s) erstellt!" >> "$MAILFILE"
-    SUBJECT="FEHLER bei Sicherung von $SELF_NAME auf $HOSTNAME" # Neuer Betreff der Mail
+    SUBJECT="FEHLER bei Sicherung von $SELF_NAME auf $HOSTNAME"  # Neuer Betreff der Mail bei Fehlern
   fi
 
   if [[ ${#RSYNCRC[@]} -ge 1 && "$SHOWERRORS" == "true" ]] ; then  # Profile mit Fehlern anzeigen
@@ -820,7 +819,7 @@ if [[ -n "$MAILADRESS" ]] ; then
     for i in "${!RSYNCRC[@]}" ; do
       echo "${RSYNCPROF[$i]} (${RSYNCRC[$i]})" >> "$MAILFILE"
     done
-  fi # SHOWERRORS
+  fi  # SHOWERRORS
 
   if [[ "$SHOWOS" == "true" ]] ; then
     if [[ -f "/etc/os-release" ]] ; then
@@ -842,7 +841,7 @@ if [[ -n "$MAILADRESS" ]] ; then
       TARGETLINE=(${MAPFILE[1]}) ; TARGETDEV=${TARGETLINE[0]}  # Erstes Element ist das Device
       if [[ ! "${TARGETDEVS[@]}" =~ $TARGETDEV ]] ; then
         TARGETDEVS+=("$TARGETDEV")
-        echo -e "\n==> Status des Sicherungsziels ($TARGETDEV):" >> "$MAILFILE"
+        echo -e "\n==> Status des Sicherungsziels (${TARGETDEV}):" >> "$MAILFILE"
         echo -e "${MAPFILE[0]}\n${MAPFILE[1]}" >> "$MAILFILE"
       fi
     fi  # SHOWUSAGE
@@ -865,17 +864,16 @@ if [[ -n "$MAILADRESS" ]] ; then
     # eMail versenden
     case $MAILPROG in
       mpack)  # Sende Mail mit mpack via ssmtp
-        mpack -s "$SUBJECT" -d "$MAILFILE" "$TMP_ARCHIV" "$MAILADRESS" # Kann "root" sein, wenn in sSMTP konfiguriert
+        mpack -s "$SUBJECT" -d "$MAILFILE" "$TMP_ARCHIV" "$MAILADRESS"  # Kann "root" sein, wenn in sSMTP konfiguriert
       ;;
       sendmail)  # Variante mit sendmail und uuencode
         mail_to_send="${TMPDIR}/~mail_to_send"
         echo "Subject: $SUBJECT" > "$mail_to_send" ; cat "$MAILFILE" >> "$mail_to_send"
-        #cat "$TMP_ARCHIV" | uuencode "$ARCHIV" >> "$mail_to_send"
         uuencode "$TMP_ARCHIV" "$ARCHIV" >> "$mail_to_send"
         sendmail "$MAILADRESS" < "$mail_to_send"
         rm "$mail_to_send"
       ;;
-      send[Ee]mail)  # Variante mit "sendEmail". Keine " für die Variable ${USETLS} verwenden!
+      send[Ee]mail)  # Variante mit "sendEmail". Keine " für die Variable $USETLS verwenden!
         sendEmail -f "$MAILSENDER" -t "$MAILADRESS" -u "$SUBJECT" -o message-file="$MAILFILE" -a "$TMP_ARCHIV" \
           -o message-charset=utf-8 -s "${MAILSERVER}:${MAILPORT}" -xu "$MAILUSER" -xp "$MAILPASS" $USETLS
       ;;
@@ -886,6 +884,7 @@ if [[ -n "$MAILADRESS" ]] ; then
     esac
     RC=$? ; [[ ${RC:-0} -eq 0 ]] && echo -e "\n==> Sicherungs-Bericht wurde mit \"${MAILPROG}\" an $MAILADRESS versendet.\n    Es wurde(n) ${#LOGFILES[@]} Logdatei(en) angelegt."
   fi  # MAILONLYERRORS
+  unset -v "MAILADRESS"
   DEBUG set +x
 fi
 
@@ -900,6 +899,7 @@ fi
 if [[ -n "$POST_ACTION" ]] ; then
   echo 'Führe POST_ACTION-Befehl(e) aus...' ; eval "$POST_ACTION"
   [[ $? -gt 0 ]] && echo "Fehler beim Ausführen von \"${POST_ACTION}\"!" && sleep 10
+  unset -v "POST_ACTION"
 fi
 
 # Ggf. Herunterfahren
