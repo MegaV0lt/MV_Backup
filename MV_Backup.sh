@@ -1,9 +1,9 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=160923                                                                         #
+VERSION=160923                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
-# Forum und neueste Version: http://j.mp/1TblNNj                                        #
+# Forum und neueste Version: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk              #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
 #                                                                                       #
 # Alle Anpassungen zum Skript, kann man in der HISTORY und in der .conf nachlesen.      #
