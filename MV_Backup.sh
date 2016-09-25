@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=160923                                                                          #
+VERSION=160924                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum und neueste Version: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk              #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -781,7 +781,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   MAILFILE="${TMPDIR}/~Mail.txt"          # Mailfile im Arbeitsspeicher oder /tmp
   SUBJECT="Sicherungs-Bericht von $SELF_NAME auf $HOSTNAME" # Betreff der Mail
 
-  if [[ ${MAXLOGSIZE:=$((1024*1024)) -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
+  if [[ ${MAXLOGSIZE:=$((1024*1024))} -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
     # Log(s) packen
     tar --create --absolute-names --auto-compress --file="$TMP_ARCHIV" "${LOGFILES[@]}" "${ERRLOGS[@]}"
     FILESIZE=$(stat -c %s "$TMP_ARCHIV")  # Größe des Archivs
