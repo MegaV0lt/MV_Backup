@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=160924                                                                          #
+VERSION=161010                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum und neueste Version: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk              #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -400,7 +400,13 @@ while getopts "$optspec" opt ; do
 done
 
 # Wenn $P leer ist, wurde die Option -p oder -a nicht angegeben
-[[ -z "${P[*]}" ]] && { echo -e "\e[1;41m FEHLER \e[0;1m Es wurde kein Profil angegeben!\e[0m\n" ; f_help ;}
+if [[ -z "${P[*]}" ]] ; then
+  if [[ "${#arg[@]}" -eq 1 ]] ; then  # Wenn nur ein Profil definiert ist, dieses automatisch auswählen
+    P=("${arg[@]}")  # Profil zuweisen
+  else
+    echo -e "\e[1;41m FEHLER \e[0;1m Es wurde kein Profil angegeben!\e[0m\n" ; f_help
+  fi
+fi
 
 # Prüfen ob alle Profile eindeutige Buchstaben haben (arg[$nr])
 for parameter in "${arg[@]}" ; do
@@ -584,7 +590,7 @@ for PROFIL in "${P[@]}" ; do
         echo "Prüfe, ob es Änderungen zu $LASTBACKUP gibt..."
         TFL="$(mktemp "${TMPDIR}/tmp.rsync.XXXX")"
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --dry-run --exclude-from="$EXFROM" \
-          --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" > "$TFL" 2>&1
+          --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" &> "$TFL"
         # Wenn es keine Unterschiede gibt, ist die 4. Zeile immer diese:
         # sent nn bytes  received nn bytes  n.nn bytes/sec
         mapfile -n 4 -t < "$TFL"  # Einlesen in Array (4 Zeilen)
@@ -734,7 +740,7 @@ for PROFIL in "${P[@]}" ; do
         [[ -f "$LOG" ]] && mv --force "$LOG" "${LOG}.old"  # Log schon vorhanden
         OLDIFS="$IFS" ; IFS=$'\n'
         for log in ${LOG%.log}_*.log ; do
-          echo "== Logfile: $log ==" >> "$LOG" ; cat "$log" >> "$LOG"
+          { echo "== Logfile: $log ==" ; cat "$log" ;} >> "$LOG"
           rm "$log" &>/dev/null
         done ; IFS="$OLDIFS"
 

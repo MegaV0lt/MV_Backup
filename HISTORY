@@ -84,3 +84,6 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
  Neu:  Globale Option MFS_TIMEOUT: Zeitabstand in Sekunden, in der der Hintergrundprozess
        (Siehe Profiloption minfree_bg[]) den freien Speicherplatz auf dem Ziel überprüft.
        Vorgabe ist 300 Sekunden (5 Minuten)
+10.10.2016
+ Neu:  Wenn in der *.conf nur ein Profil definiert ist, wird es automatisch ausgewählt,
+       falls nicht per Parameter -p oder -a angegeben
