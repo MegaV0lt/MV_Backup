@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=161011                                                                          #
+VERSION=161016                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum und neueste Version: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk              #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -65,7 +65,7 @@ f_mfs_kill() {
     echo '-> Beende Hintergrundüberwachung...'
     kill "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
     ps --pid "$MFS_PID" &>/dev/null
-    if [[ $? -ne 0 ]] ; then  # Noch aktiv!
+    if [[ $? -eq 0 ]] ; then  # Noch aktiv!
       echo '!> Hintergrundüberwachung konnte nicht beendet werden! Versuche erneut...'
       kill -9 "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
     else
@@ -358,13 +358,14 @@ while getopts "$optspec" opt ; do
       for i in "$@" ; do            # Alle übergebenen Verzeichnisse außer $TARGET als Quelle
         if [[ -d "$i" && "$i" != "$TARGET" ]] ; then
           i=$(f_remove_slash "$i")  # "/" am Ende entfernen
-          SOURCE+=" $i"             # Verzeichnis anhängen
+          MAN_SOURCE+=("$i")        # Verzeichnis anhängen
         fi
       done
       TARGET=$(f_remove_slash "$TARGET") # "/" am Ende entfernen
+      #SOURCE="${SOURCE##*( )}"           # " " am Anfang entfernen
       P='customBak' ; TITLE='Benutzerdefinierte Sicherung'
       LOG="${TARGET}/${TITLE}_log.txt"
-      MOUNT="" ; MODE='N' ; MODE_TXT='Benutzerdefiniert'
+      MOUNT='' ; MODE='N' ; MODE_TXT='Benutzerdefiniert'
     ;;
     s) SHUTDOWN='true' ;;           # Herunterfahren gewählt
     d) DEL_OLD_BACKUP="$OPTARG" ;;  # Alte Backups entfernen (Zahl entspricht Tage, die erhalten bleiben)
@@ -426,13 +427,13 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   # Konfiguration zu allen gewählten Profilen anzeigen
   echo -e "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} \e[0m"
   echo -e "\e[46m \e[0m Sicherungsmodus:\e[1m\t${MODE_TXT}\e[0m"
-  echo -e "\e[46m \e[0m Quellverzeichnis(se):\e[1m\t${SOURCE}\e[0m"
+  echo -e "\e[46m \e[0m Quellverzeichnis(se):\e[1m\t${SOURCE:=${MAN_SOURCE[*]}}\e[0m"
   echo -e "\e[46m \e[0m Zielverzeichnis:\e[1m\t${TARGET}\e[0m"
   echo -e "\e[46m \e[0m Log-Datei:\e[1m\t\t${LOG}\e[0m"
   if [[ "$PROFIL" != "customBak" ]] ; then
     echo -e '\e[46m \e[0m Ausschluss:'
-    while read -r line ; do
-      echo -e "\e[46m \e[0m\t\t\t${line}"
+    while read -r ; do
+      echo -e "\e[46m \e[0m\t\t\t${REPLY}"
     done < "$EXFROM"
   fi
   if [[ -n "$MAILADRESS" ]] ; then                # eMail-Adresse ist angegeben
@@ -477,7 +478,6 @@ if [[ -n "$MAILADRESS" ]] ; then
   [[ "$MAILPROG" == "sendmail" ]] && NEEDPROGS+=('uuencode')
 fi
 for prog in "${NEEDPROGS[@]}" ; do
-  #which "$prog" &>/dev/null || MISSING+=("$prog")
   type "$prog" &>/dev/null || MISSING+=("$prog")
 done
 if [[ -n "${MISSING[*]}" ]] ; then  # Fehlende Programme anzeigen
@@ -500,7 +500,7 @@ for PROFIL in "${P[@]}" ; do
     BAK_DIR="$(f_remove_slash "$BAK_DIR")"
 
     # Festplatte (Ziel) eingebunden?  //TODO: Bessere Methode für grep finden
-    if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep -q "$MOUNT" /etc/mtab) ]] ; then
+    if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && $(grep -q "$MOUNT" /etc/mtab) ]] ; then
       echo -e -n "Versuche Sicherungsziel (${MOUNT}) einzuhängen..."
       mount "$MOUNT" &>/dev/null
       grep -q "$MOUNT" /etc/mtab || { echo -e "\n\e[1;41m FEHLER \e[0;1m Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
@@ -508,7 +508,7 @@ for PROFIL in "${P[@]}" ; do
       UNMOUNT+=("$MOUNT")  # Nach Backup wieder aushängen (Einhängepunkt merken)
     fi
     # Ist die Quelle ein FTP und eingebunden?
-    if [[ -n "$FTPSRC" && ! $(grep -q "$FTPMNT" /etc/mtab) ]] ; then
+    if [[ -n "$FTPSRC" && $(grep -q "$FTPMNT" /etc/mtab) ]] ; then
       echo -e -n "Versuche FTP-Quelle unter \"${FTPMNT}\" einzuhängen..."
       curlftpfs "$FTPSRC" "$FTPMNT" &>/dev/null    # FTP einhängen
       grep -q "$FTPMNT" /etc/mtab || { echo -e "\n\e[1;41m FEHLER \e[0;1m Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" ; f_exit 1 ;}
@@ -553,8 +553,13 @@ for PROFIL in "${P[@]}" ; do
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT[*]} --log-file=$LOG --exclude-from=$EXFROM --backup-dir=$BAK_DIR $SOURCE $R_TARGET" >> "$LOG"
         echo '-> Starte Backup (rsync)...'
-        rsync "${RSYNC_OPT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
-          --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
+        if [[ "$PROFIL" == "customBak" ]] ; then  # Verzeichnisse wurden manuell übergeben
+          rsync "${RSYNC_OPT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
+            --backup-dir="$BAK_DIR" "${MAN_SOURCE[@]}" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
+        else
+          rsync "${RSYNC_OPT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
+            --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
+        fi
         RC=$? ; [[ $RC -ne 0 ]] && { RSYNCRC+=("$RC") ; RSYNCPROF+=("$TITLE") ;}  # Profilname und Fehlercode merken
 
         [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden!
