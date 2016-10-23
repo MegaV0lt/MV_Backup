@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=161016                                                                          #
+VERSION=161023                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum und neueste Version: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk              #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -342,7 +342,7 @@ echo -e '\e[44m \e[0m Original: 2011 by JaiBee, http://www.321tux.de/'
 echo -e "\e[46m \e[0m Verwendete Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
 
 OPTIND=1  # Wird benötigt, wenn getops ein weiteres mal verwendet werden soll!
-optspec=":p:ac:m:sd:e:fh-:"
+optspec=':p:ac:m:sd:e:fh-:'
 while getopts "$optspec" opt ; do
   case "$opt" in
     p) for i in $OPTARG ; do        # Bestimmte(s) Profil(e)
@@ -357,12 +357,11 @@ while getopts "$optspec" opt ; do
       done
       for i in "$@" ; do            # Alle übergebenen Verzeichnisse außer $TARGET als Quelle
         if [[ -d "$i" && "$i" != "$TARGET" ]] ; then
-          i=$(f_remove_slash "$i")  # "/" am Ende entfernen
-          MAN_SOURCE+=("$i")        # Verzeichnis anhängen
+          i="$(f_remove_slash "$i")"  # "/" am Ende entfernen
+          MAN_SOURCE+=("$i")          # Verzeichnis anhängen
         fi
       done
-      TARGET=$(f_remove_slash "$TARGET") # "/" am Ende entfernen
-      #SOURCE="${SOURCE##*( )}"           # " " am Anfang entfernen
+      TARGET="$(f_remove_slash "$TARGET")"  # "/" am Ende entfernen
       P='customBak' ; TITLE='Benutzerdefinierte Sicherung'
       LOG="${TARGET}/${TITLE}_log.txt"
       MOUNT='' ; MODE='N' ; MODE_TXT='Benutzerdefiniert'
@@ -471,11 +470,11 @@ done
 
 # Sind die benötigen Programme installiert?
 NEEDPROGS=(mktemp rsync "$NOTIFY" "$WALL")
-[[ -n "$DEL_OLD_BACKUP" ]] && NEEDPROGS+=('find')
-[[ -n "$FTPSRC" ]] && NEEDPROGS+=('curlftpfs')
+[[ -n "$DEL_OLD_BACKUP" ]] && NEEDPROGS+=(find)
+[[ -n "$FTPSRC" ]] && NEEDPROGS+=(curlftpfs)
 if [[ -n "$MAILADRESS" ]] ; then
-  NEEDPROGS+=("$MAILPROG" 'tar')
-  [[ "$MAILPROG" == "sendmail" ]] && NEEDPROGS+=('uuencode')
+  NEEDPROGS+=("$MAILPROG" tar)
+  [[ "$MAILPROG" == "sendmail" ]] && NEEDPROGS+=(uuencode)
 fi
 for prog in "${NEEDPROGS[@]}" ; do
   type "$prog" &>/dev/null || MISSING+=("$prog")
@@ -500,18 +499,18 @@ for PROFIL in "${P[@]}" ; do
     BAK_DIR="$(f_remove_slash "$BAK_DIR")"
 
     # Festplatte (Ziel) eingebunden?  //TODO: Bessere Methode für grep finden
-    if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && $(grep -q "$MOUNT" /etc/mtab) ]] ; then
+    if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep "$MOUNT" /proc/mounts) ]] ; then
       echo -e -n "Versuche Sicherungsziel (${MOUNT}) einzuhängen..."
       mount "$MOUNT" &>/dev/null
-      grep -q "$MOUNT" /etc/mtab || { echo -e "\n\e[1;41m FEHLER \e[0;1m Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
+      grep -q "$MOUNT" /proc/mounts || { echo -e "\n\e[1;41m FEHLER \e[0;1m Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
       echo -e "OK.\nDas Sicherungsziel (\"${MOUNT}\") wurde erfolgreich eingehängt."
       UNMOUNT+=("$MOUNT")  # Nach Backup wieder aushängen (Einhängepunkt merken)
     fi
     # Ist die Quelle ein FTP und eingebunden?
-    if [[ -n "$FTPSRC" && $(grep -q "$FTPMNT" /etc/mtab) ]] ; then
+    if [[ -n "$FTPSRC" && ! $(grep "$FTPMNT" /proc/mounts) ]] ; then
       echo -e -n "Versuche FTP-Quelle unter \"${FTPMNT}\" einzuhängen..."
       curlftpfs "$FTPSRC" "$FTPMNT" &>/dev/null    # FTP einhängen
-      grep -q "$FTPMNT" /etc/mtab || { echo -e "\n\e[1;41m FEHLER \e[0;1m Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" ; f_exit 1 ;}
+      grep -q "$FTPMNT" /proc/mounts || { echo -e "\n\e[1;41m FEHLER \e[0;1m Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" ; f_exit 1 ;}
       echo -e "OK.\nDie FTP-Quelle wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
       UNMOUNTFTP=1  # Nach Backup wieder aushängen
     fi
@@ -579,12 +578,11 @@ for PROFIL in "${P[@]}" ; do
 
       # Zielverzeichnis ermitteln: Wenn erstes Backup des Tages, dann ohne Uhrzeit
       for TODAY in $(date +%Y-%m-%d) $(date +%Y-%m-%d_%H-%M) ; do
-        [[ ! -e ${TARGET}/${TODAY} ]] && break
+        [[ ! -e "${TARGET}/${TODAY}" ]] && break
       done
       BACKUPDIR="${TARGET}/${TODAY}" ; TMPBAKDIR="${TARGET}/tmp_${TODAY}"
 
       # Verzeichnis des letzten Backups ermitteln
-      #LASTBACKUP=$(ls -1d $TARGET/????-??-??* 2>/dev/null | tail -1) # Funktioniert nicht, wenn *.log im Verzeichnis
       LASTBACKUP=$(find "${TARGET}/????-??-??*" -maxdepth 0 -type d 2>/dev/null | tail -1)
 
       if [[ -n "$LASTBACKUP" ]] ; then
@@ -794,18 +792,18 @@ if [[ -n "$MAILADRESS" ]] ; then
     FILESIZE=$(stat -c %s "$TMP_ARCHIV")  # Größe des Archivs
     if [[ $FILESIZE -gt $MAXLOGSIZE ]] ; then
       rm "$TMP_ARCHIV" &>/dev/null        # Archiv ist zu groß für den eMail-Versand
-      TMP_ARCHIV="${TMP_ARCHIV}.txt"      # Info-Datei als Ersatz
+      TMP_ARCHIV="${TMP_ARCHIV%%.*}.txt"  # Info-Datei als Ersatz
       echo 'Die gepackte(n) Logdatei(en) sind zu groß für den Versand per eMail.' > "$TMP_ARCHIV"
       echo "Der eingestellte Wert für die Maximalgröße ist $MAXLOGSIZE Bytes" >> "$TMP_ARCHIV"
-      echo -e "\n==> Liste der lokal angelegten Log-Datei(en):" >> "$TMP_ARCHIV"
+      echo -e '\n==> Liste der lokal angelegten Log-Datei(en):' >> "$TMP_ARCHIV"
       for file in "${LOGFILES[@]}" "${ERRLOGS[@]}" ; do
         echo "$file" >> "$TMP_ARCHIV"
       done
     fi
   else  # MAXLOGSIZE=0
-    TMP_ARCHIV="${TMP_ARCHIV}.txt"        # Info-Datei
-    echo "Das Senden von Logdateien ist deaktiviert (MAXLOGSZE=0)." > "$TMP_ARCHIV"
-    echo -e "\n==> Liste der lokal angelegten Log-Datei(en):" >> "$TMP_ARCHIV"
+    TMP_ARCHIV="${TMP_ARCHIV%%.*}.txt"    # Info-Datei
+    echo 'Das Senden von Logdateien ist deaktiviert (MAXLOGSZE=0).' > "$TMP_ARCHIV"
+    echo -e '\n==> Liste der lokal angelegten Log-Datei(en):' >> "$TMP_ARCHIV"
     for file in "${LOGFILES[@]}" "${ERRLOGS[@]}" ; do
       echo "$file" >> "$TMP_ARCHIV"
     done
@@ -813,7 +811,7 @@ if [[ -n "$MAILADRESS" ]] ; then
 
   # Text der eMail erzeugen
   echo -e "Sicherungs-Bericht von $SELF_NAME [#${VERSION}] auf ${HOSTNAME}\n" > "$MAILFILE"
-  echo -e -n "Die letzte Sicherung wurde beendet. " >> "$MAILFILE"
+  echo -e -n 'Die letzte Sicherung wurde beendet. ' >> "$MAILFILE"
   [[ ${#LOGFILES[@]} -ge 1 ]] && echo "Es wurde(n) ${#LOGFILES[@]} Log-Datei(en) erstellt." >> "$MAILFILE"
 
   if [[ ${#ERRLOGS[@]} -ge 1 ]] ; then
@@ -822,7 +820,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   fi
 
   if [[ ${#RSYNCRC[@]} -ge 1 && "$SHOWERRORS" == "true" ]] ; then  # Profile mit Fehlern anzeigen
-    echo -e "\n==> Profil(e) mit Fehler(n):" >> "$MAILFILE"
+    echo -e '\n==> Profil(e) mit Fehler(n):' >> "$MAILFILE"
     for i in "${!RSYNCRC[@]}" ; do
       echo "${RSYNCPROF[$i]} (${RSYNCRC[$i]})" >> "$MAILFILE"
     done
@@ -914,8 +912,8 @@ if [[ -n "$SHUTDOWN" ]] ; then
   "$NOTIFY" "Sicherung(en) abgeschlossen. ACHTUNG: Der Computer wird in 5 Minuten heruntergefahren. Führen Sie \"kill -9 $(pgrep "${0##*/}")\" aus, um das Herunterfahren abzubrechen."
   sleep 1
   echo "This System is going DOWN for System halt in 5 minutes! Run \"kill -9 $(pgrep "${0##*/}")\" to cancel shutdown." | $WALL
-  echo -e "\a\e[1;41m ACHTUNG \e[0m Der Computer wird in 5 Minuten heruntergefahren.\n"
-  echo -e "Bitte speichern Sie jetzt alle geöffneten Dokumente oder drücken Sie \e[1m[Strg] + [C]\e[0m,\nfalls der Computer nicht heruntergefahren werden soll.\n"
+  echo -e '\a\e[1;41m ACHTUNG \e[0m Der Computer wird in 5 Minuten heruntergefahren.\n'
+  echo -e 'Bitte speichern Sie jetzt alle geöffneten Dokumente oder drücken Sie \e[1m[Strg] + [C]\e[0m,\nfalls der Computer nicht heruntergefahren werden soll.\n'
   sleep 5m
   # Verschiedene Befehle zum Herunterfahren mit Benutzerrechten [muss evtl. an das eigene System angepasst werden!]
   # Alle Systeme mit HAL || GNOME DBUS || KDE DBUS || GNOME || KDE
