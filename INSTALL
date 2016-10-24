@@ -1,0 +1,52 @@
+
+MV_Backup.sh - Backup-Skript für Linux Bash
+Author: MegaV0lt, http://j.mp/cQIazU
+Forum und neueste Version: http://j.mp/1TblNNj
+Basiert auf dem RSYNC-BACKUP-Skript von:
+
+ Author:   JaiBee, http://www.321tux.de
+ Date:     2011-01-02  Version: 0.98
+ License:  Creative Commons "Namensnennung-Nicht-kommerziell-
+           Weitergabe unter gleichen Bedingungen 3.0 Unported "
+           [ http://creativecommons.org/licenses/by-nc-sa/3.0/deed.de ]
+
+Alle Anpassungen zum Skript, kann man hier und in der .conf nachlesen.
+Wer sich erkenntlich zeigen möchte, kann mir gerne einen kleinen Betrag zukommen
+lassen: => http://paypal.me/SteBlo
+Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
+
+Das Skript benötigt "Bash" ab Version 4. Zusätzlich und je nach konfiguration
+noch: find, grep, df, mount
+
+Installation vom GIT:
+
+- GIT herunter laden:
+  Im Terminal folgende Befehle ausführen:
+  cd /usr/local/src
+  git co https://github.com/MegaV0lt/MV_Backup.git MV_Backup-git
+
+- Backupskript und *.conf kopieren
+  cp MV_Backup.sh /usr/local/sbin/
+  cp MV_Backup.conf.dist /usr/local/sbin/MV_Backup.conf
+
+- MV_Backup.conf anpassen
+  Die *.conf auf die eigenen Bedürfnisse anpassen.
+  Beispiele sind enthalten.
+
+Update vom GIT:
+  Im Terminal folgende Befehle ausführen:
+  cd /usr/local/src/MV_Backup-git
+  git pull
+
+
+Hinweise:
+
+Man kann dem Skript auch eine andere *.conf übergeben. Beispiel:
+  /usr/local/sbin/MV_Backup.sh -c MeineConfig.conf -p...
+
+Eine kurze Hilfe zu den Parametern bekommt man mit
+  /usr/local/sbin/MV_Backup.sh -h
+
+
+
+
