@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=161023                                                                          #
+VERSION=161024                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum und neueste Version: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk              #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -37,6 +37,7 @@ SELF_NAME="${SELF##*/}"                          # skript.sh
 TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")  # Ordner für temporäre Dateien
 declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Array's
 declare -A _arg JOBS  # Array JOBS wird für den Multi rsync-Modus benötigt
+msgERR="\e[1;41m FEHLER! \e[0;1m"  # Anzeige "FEHLER!"
 
 ###################################### FUNKTIONEN #######################################
 
@@ -129,21 +130,21 @@ f_settings() {
         # Erforderliche Werte prüfen, und ggf. Vorgaben setzen
         notset="\e[1;41m -LEER- \e[0m"  # Anzeige, wenn nicht gesetzt
         if [[ -z "$SOURCE" || -z "$TARGET" ]] ; then
-          echo -e '\e[1;41m FEHLER \e[0;1m Quelle und/oder Ziel sind nicht konfiguriert!\e[0m'
+          echo -e "$msgERR Quelle und/oder Ziel sind nicht konfiguriert!\e[0m"
           echo -e " Profil:    \"${TITLE:-$notset}\"\n Parameter: \"${ARG:-$notset}\" (Nummer: $i)"
           echo -e " Quelle:    \"${SOURCE:-$notset}\"\n Ziel:      \"${TARGET:-$notset}\"" ; f_exit 1
         fi
         if [[ -n "$FTPSRC" && -z "$FTPMNT" ]] ; then
-          echo -e '\e[1;41m FEHLER \e[0;1m FTP-Quelle und Einhängepunkt falsch konfiguriert!\e[0m'
+          echo -e "$msgERR FTP-Quelle und Einhängepunkt falsch konfiguriert!\e[0m"
           echo -e " Profil:        \"${TITLE:-$notset}\"\n Parameter:     \"${ARG:-$notset}\" (Nummer: $i)"
           echo -e " FTP-Quelle:    \"${FTPSRC:-$notset}\"\n Einhängepunkt: \"${FTPMNT:-$notset}\"" ; f_exit 1
         fi
         if [[ -n "$DEL_OLD_SOURCE" && "${#P[@]}" -ne 1 ]] ; then
-          echo -e '\e[1;41m FEHLER \e[0;1m \"--del-old-source\" kann nicht mit mehreren Profilen verwendet werden!\e[0m'
+          echo -e "$msgERR \"--del-old-source\" kann nicht mit mehreren Profilen verwendet werden!\e[0m"
           f_exit 1
         fi
         if [[ -n "$MINFREE" && -n "$MINFREE_BG" ]] ; then
-          echo -e '\e[1;41m FEHLER \e[0;1m minfree und minfree_bg sind gesetzt! Bitte nur einen Wert verwenden!\e[0m'
+          echo -e "$msgERR minfree und minfree_bg sind gesetzt! Bitte nur einen Wert verwenden!\e[0m"
           echo -e " Profil:     \"${TITLE:-$notset}\"\n Parameter:  \"${ARG:-$notset}\" (Nummer: $i)"
           echo -e " MINFREE:    \"${MINFREE:-$notset}\"\n MINFREE_BG: \"${MINFREE_BG:-$notset}\"" ; f_exit 1
         fi
@@ -205,7 +206,8 @@ f_del_old_source() {   # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Qu
 }
 
 f_countdown_wait() {
-  echo -e "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet\e[0m"
+  #echo -e "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet\e[0m"
+  printf '%-80b' "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet" ; printf '%b\n' '\e[0m'
   echo -e '\e[46m \e[0m Zum Abbrechen [Strg] + [C] drücken\n\e[46m \e[0m Zum Pausieren [Strg] + [Z] drücken (Fortsetzen mit \"fg\")\n'
   for i in {5..1} ; do  # Countdown ;)
     echo -e -n "\rStart in \e[97;44m  $i  \e[0m Sekunden"
@@ -234,10 +236,10 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
     echo -e "\e[103m \e[0m Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (${mftext}=${MINFREE})"
     echo "Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (${mftext}=${MINFREE})" >> "$ERRLOG"
     if [[ -z "$SKIP_FULL" ]] ; then  # In der Konfig definiert
-      echo -e "\nDas Backup (${TITLE}) ist möglicherweise unvollständig!" >> "$ERRLOG"
+      echo -e "\nDie Sicherung (${TITLE}) ist möglicherweise unvollständig!" >> "$ERRLOG"
       echo -e 'Bitte überprüfen Sie auch die Einträge in den Log-Dateien!\n' >> "$ERRLOG"
     else
-      echo -e "\n\n => Das Backup (${TITLE}) wird nicht durchgeführt!" >> "$ERRLOG"
+      echo -e "\n\n => Die Sicherung (${TITLE}) wird nicht durchgeführt!" >> "$ERRLOG"
       FINISHEDTEXT='abgebrochen!'  # Text wird am Ende ausgegeben
     fi
   else
@@ -256,7 +258,7 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
       touch "${TMPDIR}/.stopflag"  # Für den Multi-rsync-Modus benötigt
       echo -e "\e[103m \e[0m Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
       { echo "Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
-        echo -e "\n\n => Das Backup (${TITLE}) wird abgebrochen!" ;} >> "$ERRLOG"
+        echo -e "\n\n => Die Sicherung (${TITLE}) wird abgebrochen!" ;} >> "$ERRLOG"
       killall --exact rsync >/dev/null 2>> "$ERRLOG"  # Alle rsync-Prozesse beenden
       [[ $(pgrep --exact --count rsync) -gt 0 ]] && { echo 'FEHLER! Es laufen immer noch rsync-Prozesse! Versuche zu beenden...'
                                                       killall rsync >/dev/null 2>> "$ERRLOG" ;}
@@ -280,15 +282,15 @@ if [[ -f "$PIDFILE" ]] ; then  # PID-Datei existiert
   PID="$(< "$PIDFILE")"        # PID einlesen
   ps --pid "$PID" &>/dev/null
   if [[ $? -eq 0 ]] ; then     # Skript läuft schon!
-    echo -e "\e[1;41m FEHLER \e[0;1m Skript läuft bereits!\e[0m (PID: $PID)"
+    echo -e "$msgERR Das Skript läuft bereits!\e[0m (PID: $PID)"
     f_exit 4                   # Beenden aber PID-Datei nicht löschen
   else  # Prozess nicht gefunden. PID-Datei überschreiben
     echo "$$" > "$PIDFILE" \
-      || { echo -e '\e[1;41m FEHLER \e[0;1m PID-Datei konnte nicht überschrieben werden!\e[0m' ; f_exit 1 ;}
+      || { echo -e "$msgERR Die PID-Datei konnte nicht überschrieben werden!\e[0m" ; f_exit 1 ;}
   fi
 else                           # PID-Datei existiert nicht. Neu anlegen
   echo "$$" > "$PIDFILE" \
-    || { echo -e '\e[1;41m FEHLER \e[0;1m PID-Datei konnte nicht erzeugt werden!\e[0m' ; f_exit 1 ;}
+    || { echo -e "$msgERR Die PID-Datei konnte nicht erzeugt werden!\e[0m" ; f_exit 1 ;}
 fi
 
 ##################################### KONFIG LADEN ######################################
@@ -298,10 +300,10 @@ while getopts ":c:" opt ; do
   case "$opt" in
     c) CONFIG="$OPTARG"
        if [[ -f "$CONFIG" ]] ; then  # Konfig wurde angegeben und existiert
-         source "$CONFIG" ; CONFLOADED=1
+         source "$CONFIG" ; CONFLOADED='Angegebene'
          break
        else
-         echo -e "\e[1;41m FEHLER \e[0;1m Die angegebene Konfigurationsdatei fehlt!\e[0m (\"${CONFIG}\")"
+         echo -e "$msgERR Die angegebene Konfigurationsdatei fehlt!\e[0m (\"${CONFIG}\")"
          f_exit 1
        fi
     ;;
@@ -316,12 +318,12 @@ if [[ -z "$CONFLOADED" ]] ; then     # Konfiguration wurde noch nicht geladen
   for dir in "${CONFIG_DIRS[@]}" ; do
     CONFIG="${dir}/${CONFIG_NAME}"
     if [[ -f "$CONFIG" ]] ; then
-      source "$CONFIG" ; CONFLOADED=2
+      source "$CONFIG" ; CONFLOADED='Gefundene'
       break  # Die erste gefundene Konfiguration wird verwendet
     fi
   done
   if [[ -z "$CONFLOADED" ]] ; then   # Konfiguration wurde nicht gefunden
-    echo -e "\e[1;41m FEHLER \e[0;1m Keine Konfigurationsdatei gefunden!\e[0m (\"${CONFIG_DIRS[*]}\")"
+    echo -e "$msgERR Keine Konfigurationsdatei gefunden!\e[0m (\"${CONFIG_DIRS[*]}\")"
     f_help
   fi
 fi
@@ -339,9 +341,9 @@ tty --silent && clear
 echo -e "\e[44m \e[0;1m RSYNC BACKUP\e[0m\e[0;32m => Version: ${VERSION}\e[0m by MegaV0lt, http://j.mp/1TblNNj"
 echo -e '\e[44m \e[0m Original: 2011 by JaiBee, http://www.321tux.de/'
 # Anzeigen, welche Konfiguration geladen wurde!
-echo -e "\e[46m \e[0m Verwendete Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
+echo -e "\e[46m \e[0m $CONFLOADED Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
 
-OPTIND=1  # Wird benötigt, wenn getops ein weiteres mal verwendet werden soll!
+OPTIND=1  # Wird benötigt, weil getops ein weiteres mal verwendet wird!
 optspec=':p:ac:m:sd:e:fh-:'
 while getopts "$optspec" opt ; do
   case "$opt" in
@@ -367,11 +369,11 @@ while getopts "$optspec" opt ; do
       MOUNT='' ; MODE='N' ; MODE_TXT='Benutzerdefiniert'
     ;;
     s) SHUTDOWN='true' ;;           # Herunterfahren gewählt
-    d) DEL_OLD_BACKUP="$OPTARG" ;;  # Alte Backups entfernen (Zahl entspricht Tage, die erhalten bleiben)
+    d) DEL_OLD_BACKUP="$OPTARG" ;;  # "Gelöschte Dateien" entfernen (Zahl entspricht Tage, die erhalten bleiben)
     e) MAILADRESS="$OPTARG" ;;      # eMail-Adresse verwenden um Logs zu senden
     f) MAILONLYERRORS='true' ;;     # eMail nur bei Fehlern senden
     h) f_help ;;                    # Hilfe anzeigen
-    -) case "${OPTARG}" in          # Lange Option (--) # TEST
+    -) case "$OPTARG" in            # Lange Option (--) # TEST
          del-old-source)            # Parameter nach Leerzeichen
            DEL_OLD_SOURCE="${!OPTIND}"; ((OPTIND++))
            #echo "Option: '--${OPTARG}', Wert: '${DEL_OLD_SOURCE}'" >&2;
@@ -387,10 +389,10 @@ while getopts "$optspec" opt ; do
          ;;
        esac
        ;;
-    #?) echo -e "\e[1;41m FEHLER \e[0;1m Option ungültig!\e[0m\n" && f_help ;;
+    #?) echo -e "$msgERR Option ungültig!\e[0m\n" && f_help ;;
     *) if [[ "$OPTERR" != 1 || "${optspec:0:1}" = ":" ]] ; then
          echo "Non-option argument: '-${OPTARG}'" >&2
-         echo -e '\e[1;41m FEHLER \e[0;1m Option ungültig!\e[0m\n' && f_help
+         echo -e "$msgERR Option ungültig!\e[0m\n" && f_help
        fi
     ;;
   esac
@@ -401,19 +403,19 @@ if [[ -z "${P[*]}" ]] ; then
   if [[ "${#arg[@]}" -eq 1 ]] ; then  # Wenn nur ein Profil definiert ist, dieses automatisch auswählen
     P=("${arg[@]}")  # Profil zuweisen
   else
-    echo -e '\e[1;41m FEHLER \e[0;1m Es wurde kein Profil angegeben!\e[0m\n' ; f_help
+    echo -e "$msgERR Es wurde kein Profil angegeben!\e[0m\n" ; f_help
   fi
 fi
 
 # Prüfen ob alle Profile eindeutige Buchstaben haben (arg[$nr])
 for parameter in "${arg[@]}" ; do
   [[ -z "${_arg[$parameter]+_}" ]] && { _arg[$parameter]=1 || \
-    { echo -e "\e[1;41m FEHLER \e[0;1m Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" ; f_exit ;}
+    { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" ; f_exit ;}
     }
 done
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
-#[[ -n "$SHUTDOWN" && "$(whoami)" != "root" ]] && echo -e "\e[1;41m FEHLER \e[0;1m Zum automatischen Herunterfahren sind Root-Rechte erforderlich!\e[0m\n" && f_help
+#[[ -n "$SHUTDOWN" && "$(whoami)" != "root" ]] && echo -e "$msgERR Zum automatischen Herunterfahren sind Root-Rechte erforderlich!\e[0m\n" && f_help
 
 [[ -n "$SHUTDOWN" ]] && echo -e '  \e[1;31mDer Computer wird nach Durchführung der Sicherung(en) automatisch heruntergefahren!\e[0m'
 
@@ -421,10 +423,11 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   f_settings
 
   # Wurden der Option -p gültige Argument zugewiesen?
-  [[ "$PROFIL" != "$ARG" && "$PROFIL" != "customBak" ]] && { echo -e '\e[1;41m FEHLER \e[0;1m Option -p wurde nicht korrekt definiert!\e[0m\n' ; f_help ;}
+  [[ "$PROFIL" != "$ARG" && "$PROFIL" != "customBak" ]] && { echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" ; f_help ;}
 
   # Konfiguration zu allen gewählten Profilen anzeigen
-  echo -e "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} \e[0m"
+  #echo -e "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} \e[0m"
+  printf '%-80b' "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE}" ; printf '%b\n' '\e[0m'
   echo -e "\e[46m \e[0m Sicherungsmodus:\e[1m\t${MODE_TXT}\e[0m"
   echo -e "\e[46m \e[0m Quellverzeichnis(se):\e[1m\t${SOURCE:=${MAN_SOURCE[*]}}\e[0m"
   echo -e "\e[46m \e[0m Zielverzeichnis:\e[1m\t${TARGET}\e[0m"
@@ -447,9 +450,9 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   if [[ -n "$DEL_OLD_BACKUP" ]] ; then
     case $MODE in
       [NM]) if [[ $DEL_OLD_BACKUP =~ ^[0-9]+$ ]] ; then  # Prüfen, ob eine Zahl angegeben wurde
-              echo -e "\e[103m \e[0m Sicherungen:\e[1m\t\tLÖSCHEN wenn älter als $DEL_OLD_BACKUP Tage\e[0m"
+              echo -e "\e[103m \e[0m Gelöschte Dateien:\e[1m\tLÖSCHEN wenn älter als $DEL_OLD_BACKUP Tage\e[0m"
             else
-              echo -e "\e[1;41m FEHLER \e[0;1m Keine gültige Zahl!\e[0m (-d $DEL_OLD_BACKUP)" ; f_exit 1
+              echo -e "$msgERR Keine gültige Zahl!\e[0m (-d $DEL_OLD_BACKUP)" ; f_exit 1
             fi
          ;;
          S) echo -e "\e[103m \e[0m Löschen von alten Dateien wird im Snapshot-Modus \e[1mnicht\e[0m unterstützt (-d $DEL_OLD_BACKUP)\e[0m" ;;
@@ -460,7 +463,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
       [NM]) if [[ $DEL_OLD_SOURCE =~ ^[0-9]+$ ]] ; then  # Prüfen, ob eine Zahl angegeben wurde
               echo -e "\e[103m \e[0m \e[93mQuelldateien:\e[0m\e[1m\t\tLÖSCHEN wenn älter als $DEL_OLD_SOURCE Tage\e[0m"
             else
-              echo -e "\e[1;41m FEHLER \e[0;1m Keine gültige Zahl!\e[0m (--del-old-source $DEL_OLD_SOURCE)" ; f_exit 1
+              echo -e "$msgERR Keine gültige Zahl!\e[0m (--del-old-source $DEL_OLD_SOURCE)" ; f_exit 1
             fi
          ;;
          S) echo -e "\e[103m \e[0m Löschen von Quelldateien wird im Snapshot-Modus \e[1mnicht\e[0m unterstützt (--del-old-source)\e[0m" ;;
@@ -501,18 +504,20 @@ for PROFIL in "${P[@]}" ; do
     # Festplatte (Ziel) eingebunden?  //TODO: Bessere Methode für grep finden
     if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep "$MOUNT" /proc/mounts) ]] ; then
       echo -e -n "Versuche Sicherungsziel (${MOUNT}) einzuhängen..."
-      mount "$MOUNT" &>/dev/null
-      grep -q "$MOUNT" /proc/mounts || { echo -e "\n\e[1;41m FEHLER \e[0;1m Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
+      mount "$MOUNT" &>/dev/null \
+        || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
+      #grep -q "$MOUNT" /proc/mounts || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
       echo -e "OK.\nDas Sicherungsziel (\"${MOUNT}\") wurde erfolgreich eingehängt."
-      UNMOUNT+=("$MOUNT")  # Nach Backup wieder aushängen (Einhängepunkt merken)
+      UNMOUNT+=("$MOUNT")  # Nach Sicherung wieder aushängen (Einhängepunkt merken)
     fi
     # Ist die Quelle ein FTP und eingebunden?
     if [[ -n "$FTPSRC" && ! $(grep "$FTPMNT" /proc/mounts) ]] ; then
-      echo -e -n "Versuche FTP-Quelle unter \"${FTPMNT}\" einzuhängen..."
+      echo -e -n "Versuche FTP-Quelle (${FTPSRC}) unter \"${FTPMNT}\" einzuhängen..."
       curlftpfs "$FTPSRC" "$FTPMNT" &>/dev/null    # FTP einhängen
-      grep -q "$FTPMNT" /proc/mounts || { echo -e "\n\e[1;41m FEHLER \e[0;1m Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" ; f_exit 1 ;}
-      echo -e "OK.\nDie FTP-Quelle wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
-      UNMOUNTFTP=1  # Nach Backup wieder aushängen
+      grep -q "$FTPMNT" /proc/mounts \
+        || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" ; f_exit 1 ;}
+      echo -e "OK.\nDie FTP-Quelle (${FTPSRC}) wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
+      UNMOUNTFTP=1  # Nach Sicherung wieder aushängen
     fi
   fi  # ! customBak
 
@@ -523,7 +528,7 @@ for PROFIL in "${P[@]}" ; do
   unset -v "FINISHEDTEXT" "MFS_PID"
 
   case $MODE in
-    N) ### Normales Backup (inkl. customBak)
+    N) ### Normale Sicherung (inkl. customBak)
       # Ggf. Verzeichnis für gelöschte Dateien erstellen
       [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" || f_exit 1 ;}
       R_TARGET="${TARGET}/${FILES_DIR}"  # Ordner für die gesicherten Dateien
@@ -546,12 +551,12 @@ for PROFIL in "${P[@]}" ; do
         MFS_PID=$! ; echo " PID: $MFS_PID"  # PID merken
       fi
 
-      # Kein Backup, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
+      # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
       if [[ -z "$SKIP_FULL" ]] ; then
-        ### Backup mit rsync starten ###
+        ### Sicherung mit rsync starten ###
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT[*]} --log-file=$LOG --exclude-from=$EXFROM --backup-dir=$BAK_DIR $SOURCE $R_TARGET" >> "$LOG"
-        echo '-> Starte Backup (rsync)...'
+        echo '-> Starte Sicherung (rsync)...'
         if [[ "$PROFIL" == "customBak" ]] ; then  # Verzeichnisse wurden manuell übergeben
           rsync "${RSYNC_OPT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
             --backup-dir="$BAK_DIR" "${MAN_SOURCE[@]}" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
@@ -565,24 +570,24 @@ for PROFIL in "${P[@]}" ; do
         [[ -e "${TMPDIR}/.stopflag" ]] && FINISHEDTEXT='abgebrochen!'  # Platte voll!
 
         if [[ -z "$FINISHEDTEXT" ]] ; then  # Alte Daten nur löschen wenn nicht abgebrochen wurde!
-          # Funktion zum Löschen alter Backups aufrufen
+          # Funktion zum Löschen alter Sicherungen aufrufen
           [[ -n "$DEL_OLD_BACKUP" ]] && f_del_old_backup "${BAK_DIR%/*}"
           # Funktion zum Löschen alter Dateien auf der Quelle ($1=Quelle $2=Ziel)
           [[ -n "$DEL_OLD_SOURCE" ]] && f_del_old_source "$SOURCE" "$R_TARGET"
         fi  # FINISHEDTEXT
       fi  # SKIP_FULL
     ;;
-    S) ### Snapshot Backup
-      # Temporäre Verzeichnisse, die von fehlgeschlagenen Backups noch vorhanden sind löschen
+    S) ### Snapshot Sicherung
+      # Temporäre Verzeichnisse, die von fehlgeschlagenen Sicherungen noch vorhanden sind löschen
       rm --recursive --force "${TARGET}/tmp_????-??-??*" 2>/dev/null
 
-      # Zielverzeichnis ermitteln: Wenn erstes Backup des Tages, dann ohne Uhrzeit
+      # Zielverzeichnis ermitteln: Wenn erste Sicherung des Tages, dann ohne Uhrzeit
       for TODAY in $(date +%Y-%m-%d) $(date +%Y-%m-%d_%H-%M) ; do
         [[ ! -e "${TARGET}/${TODAY}" ]] && break
       done
       BACKUPDIR="${TARGET}/${TODAY}" ; TMPBAKDIR="${TARGET}/tmp_${TODAY}"
 
-      # Verzeichnis des letzten Backups ermitteln
+      # Verzeichnis der letzten Sicherung ermitteln
       LASTBACKUP=$(find "${TARGET}/????-??-??*" -maxdepth 0 -type d 2>/dev/null | tail -1)
 
       if [[ -n "$LASTBACKUP" ]] ; then
@@ -595,24 +600,24 @@ for PROFIL in "${P[@]}" ; do
         # sent nn bytes  received nn bytes  n.nn bytes/sec
         mapfile -n 4 -t < "$TFL"  # Einlesen in Array (4 Zeilen)
         if [[ ${MAPFILE[3]} =~ sent.*bytes.*received.*bytes.* ]] ; then
-          echo '==> Keine Änderung! Kein Backup erforderlich!'
-          echo "==> Aktuelles Backup: $LASTBACKUP"
-          NOT_CHANGED=1  # Kein Backup nötig. Merken für später
+          echo '==> Keine Änderung! Keine Sicherung erforderlich!'
+          echo "==> Aktuelle Sicherung: $LASTBACKUP"
+          NOT_CHANGED=1  # Keine Sicherung nötig. Merken für später
         fi
         rm "$TFL" 2>/dev/null
       fi
 
-      if [[ -z "$NOT_CHANGED" ]] ; then  # Kein Backup nötig?
+      if [[ -z "$NOT_CHANGED" ]] ; then  # Keine Sicherung nötig?
         f_countdown_wait                 # Countdown vor dem Start anzeigen
-        ### Backup mit rsync starten ###
+        ### Sicherung mit rsync starten ###
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBACKDIR" >> "$LOG"
-        echo '-> Starte Backup (rsync)...'
+        echo '-> Starte Sicherung (rsync)...'
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" >/dev/null 2>> "$ERRLOG"
         RC=$? ; if [[ $RC -ne 0 ]] ; then
           RSYNCRC+=("$RC") ; RSYNCPROF+=("$TITLE")  # Profilname und Fehlercode merken
-        else                                        # Wenn Backup erfolgreich, Verzeichnis umbenennen
+        else                                        # Wenn Sicherung erfolgreich, Verzeichnis umbenennen
           echo "Verschiebe $TMPBAKDIR nach $BACKUPDIR" >> "$LOG"
           mv "$TMPBAKDIR" "$BACKUPDIR" 2>> "$ERRLOG"
         fi
@@ -649,7 +654,7 @@ for PROFIL in "${P[@]}" ; do
         MFS_PID=$! ; echo " PID: $MFS_PID"  # PID merken
       fi
 
-      # Kein Backup, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
+      # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
       if [[ -z "$SKIP_FULL" ]] ; then
         mapfile -t < "$EXFROM"  # Ausschlussliste einlesen
         mv --force "$EXFROM" "${_EXFROM:=${EXFROM}.$RANDOM}"  # Ausschlussliste für ./
@@ -746,7 +751,7 @@ for PROFIL in "${P[@]}" ; do
         [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden!
 
         if [[ -z "$FINISHEDTEXT" ]] ; then  # Alte Daten nur löschen wenn nicht abgebrochen wurde!
-          # Funktion zum Löschen alter Backups aufrufen
+          # Funktion zum Löschen alter Sicherungen aufrufen
           [[ -n "$DEL_OLD_BACKUP" ]] && f_del_old_backup "${BAK_DIR%/*}"
           # Funktion zum Löschen alter Dateien auf der Quelle ($1=Quelle $2=Ziel)
           [[ -n "$DEL_OLD_SOURCE" ]] && f_del_old_source "$SOURCE" "$R_TARGET"
@@ -754,7 +759,7 @@ for PROFIL in "${P[@]}" ; do
       fi  # SKIP_FULL
     ;;
     *) # Üngültiger Modus
-      echo -e "\e[1;41m FEHLER \e[0;1m Unbekannter Sicherungsmodus!\e[0m (\"${MODE}\")"
+      echo -e "$msgERR Unbekannter Sicherungsmodus!\e[0m (\"${MODE}\")"
       f_exit 1
     ;;
   esac
@@ -788,6 +793,7 @@ if [[ -n "$MAILADRESS" ]] ; then
 
   if [[ ${MAXLOGSIZE:=$((1024*1024))} -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
     # Log(s) packen
+    echo "Erstelle Archiv \"${ARCHIV}\" mit $((${#LOGFILES[@]}+${#ERRLOGS[@]})) Logdatei(en)..."
     tar --create --absolute-names --auto-compress --file="$TMP_ARCHIV" "${LOGFILES[@]}" "${ERRLOGS[@]}"
     FILESIZE=$(stat -c %s "$TMP_ARCHIV")  # Größe des Archivs
     if [[ $FILESIZE -gt $MAXLOGSIZE ]] ; then
@@ -810,6 +816,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   fi
 
   # Text der eMail erzeugen
+  echo 'Erzeuge Text für die eMail...'
   echo -e "Sicherungs-Bericht von $SELF_NAME [#${VERSION}] auf ${HOSTNAME}\n" > "$MAILFILE"
   echo -e -n 'Die letzte Sicherung wurde beendet. ' >> "$MAILFILE"
   [[ ${#LOGFILES[@]} -ge 1 ]] && echo "Es wurde(n) ${#LOGFILES[@]} Log-Datei(en) erstellt." >> "$MAILFILE"
@@ -867,6 +874,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   # eMail nur, wenn (a) MAILONLYERRORS=true und Fehler vorhanden sind oder (b) MAILONLYERRORS nicht true
   if [[ ${#ERRLOGS[@]} -ge 1 && "$MAILONLYERRORS" == "true" || "$MAILONLYERRORS" != "true" ]] ; then
     # eMail versenden
+    echo "Sende eMail an ${MAILADRESS}..."
     case $MAILPROG in
       mpack)  # Sende Mail mit mpack via ssmtp
         mpack -s "$SUBJECT" -d "$MAILFILE" "$TMP_ARCHIV" "$MAILADRESS"  # Kann "root" sein, wenn in sSMTP konfiguriert
@@ -894,6 +902,7 @@ fi
 
 # Zuvor eingehängte(s) Sicherungsziel(e) wieder aushängen
 if [[ ${#UNMOUNT[@]} -ge 1 ]] ; then
+  echo "Zuvor eingehängte Sicherungsziele werden wieder ausgehängt..."
   for volume in "${UNMOUNT[@]}" ; do
     umount --force "$volume"
   done
@@ -924,7 +933,7 @@ if [[ -n "$SHUTDOWN" ]] ; then
     gnome-power-cmd shutdown || dcop ksmserver ksmserver logout 0 2 2 || \
     halt || shutdown -h now
 else
-  "$NOTIFY" "Sicherung(en) abgeschlossen."
+  echo -e '\n' ; "$NOTIFY" "Sicherung(en) abgeschlossen."
 fi
 
 # Aufräumen und beenden
