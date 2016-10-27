@@ -376,23 +376,21 @@ while getopts "$optspec" opt ; do
     -) case "$OPTARG" in            # Lange Option (--) # TEST
          del-old-source)            # Parameter nach Leerzeichen
            DEL_OLD_SOURCE="${!OPTIND}"; ((OPTIND++))
-           #echo "Option: '--${OPTARG}', Wert: '${DEL_OLD_SOURCE}'" >&2;
+           #echo "Option: --${OPTARG}, Wert: ${DEL_OLD_SOURCE}" >&2;
          ;;
          del-old-source=*)          # Parameter nach "="
            val="${OPTARG#*=}" ; DEL_OLD_SOURCE="${OPTARG%=$val}"
-           #echo "Option: '--${opt}', Wert: '${DEL_OLD_SOURCE}'" >&2
+           #echo "Option: --${opt}, Wert: ${DEL_OLD_SOURCE}" >&2
          ;;
-         *) if [[ "$OPTERR" = 1 && "${optspec:0:1}" != ":" ]] ; then
-              echo "Unbekannte Option --${OPTARG}" >&2
-              f_exit
+         *) if [[ "$OPTERR" = 1 ]] ; then
+              echo -e "$msgERR Unbekannte Option: --${OPTARG}\e[0m\n" >&2
+              f_help
             fi
          ;;
        esac
        ;;
-    #?) echo -e "$msgERR Option ungültig!\e[0m\n" && f_help ;;
     *) if [[ "$OPTERR" != 1 || "${optspec:0:1}" = ":" ]] ; then
-         echo "Non-option argument: '-${OPTARG}'" >&2
-         echo -e "$msgERR Option ungültig!\e[0m\n" && f_help
+         echo -e "$msgERR Unbekannte Option: -${OPTARG}\e[0m\n" && f_help
        fi
     ;;
   esac
