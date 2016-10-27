@@ -18,7 +18,7 @@ RSYNC_OPT_SNAPSHOT=("-av")           # Parameter für Modus Snapshot
 # Geeignet, wenn alle Profile das Sicherungsziel im selben Einhängepunkt haben
 # ACHTUNG: Bei verschiedenen Sicherungszielnen den Parameter mount[$nr] in
 # der Profilkonfiguration verwenden
-MOUNT="/mnt/usbdisk"                 # Einhängepunkt des Sicherungsziels (Beispiel)
+#MOUNT="/mnt/usbdisk"                # Einhängepunkt des Sicherungsziels (Beispiel)
 #MOUNT="$(readlink -m /mnt/usbdisk)" # Falls Einhängepunkt ein Symlink ist
 
 # Ordner, in den gelöschte Dateien kopiert werden (--backup-dir=)
@@ -28,8 +28,8 @@ f_bak_dir() {                        # Letzter Ordner Format: JJJJ-MM-TT
 }
 
 # [optional] Ordner in dem die Sicherung gespeichert wird. Vorgabe ist "_DATEIEN"
-# Der Ordner wird im Sicherungsziel angelegt. Nur Name angeben; keine "/"
-FILES_DIR=
+# Der Ordner wird im Sicherungsziel ($TARGET) angelegt. Nur Name angeben; keine "/"
+#FILES_DIR="_DATEIEN"
 
 # [optional] Zusätzlicher Suchpfad für das Skript, um Programme wie "find" oder
 # "curlftpfs" zu finden. Beispiel: PATH="/opt/bin:${PATH}" - Fügt "/opt/bin" am Anfang ein.
@@ -37,7 +37,7 @@ FILES_DIR=
 # Die Variabel ${PATH} muss entweder am Anfang oder am Ende eingefügt werden.
 #PATH="/opt/bin:${PATH}"  # Am Ende angehängter Pfad: PATH="${PATH}:/opt/bin"
 
-# [optional] Zeitabstand in Sekunden, in der der Hintergrundprozess  (siehe minfree_bg[])
+# [optional] Zeitabstand in Sekunden, in der der Hintergrundprozess (siehe minfree_bg[])
 # den freien Speicherplatz auf dem Ziel überprüft. Vorgabe ist 300 Sekunden (5 Minuten)
 MFS_TIMEOUT="300"  # Zeit in Sekunden
 
@@ -45,13 +45,13 @@ MFS_TIMEOUT="300"  # Zeit in Sekunden
 
 # Mailer, der verwendet werden soll. Mögliche Optionen sind:
 # mpack (In Verbindung mit ssmtp), sendmail, sendEmail (http://j.mp/Xo69II)
-# oder eMail (http://j.mp/1LwMBut)
-MAILPROG="mpack"   # mpack, sendmail, sendEmail oder eMail
+# oder email (http://j.mp/1LwMBut)
+MAILPROG="mpack"   # mpack, sendmail, sendEmail oder email
 
 # eMail-Empfänger (My@mail.de)
 # Nur ausfüllen, wenn man kein -e ... verwenden will (z.B. für crontab)
 # Es wird dann eine eMail versendet. Kann mit -e ... überschrieben werden
-MAILADRESS=
+MAILADRESS=""
 
 # eMail nur bei Fehler versenden. Kann mit -f über die Befehlszeile angewendet werden
 # Kommentarzeichen (#) entfernen zum aktivieren
@@ -67,10 +67,10 @@ SHOWOPTIONS="true"
 # Zeige die Belegung des Sicherungsziels (df -Ph)
 SHOWUSAGE="true"
 
-# Zeige Inhalt der Sichrungsziele (Oberste Ebene [ls -lh])
+# Zeige Inhalt der Sichrungsziele (Oberste Ebene ls -lh und du -h)
 SHOWCONTENT="true"
 
-# Zeige Profile mit Fehlern (rsync Returncode)
+# Zeige Profile mit Fehlern (rsync Fehlercode)
 SHOWERRORS="true"
 
 # Max. Größe des gepackten Logarchivs in Byte, das per Mail gesendet wird.
@@ -79,11 +79,11 @@ MAXLOGSIZE=$((1024*1024))     # 1 MB (Vorgabe)
 #MAXLOGSIZE=$((5*1024*1024))  # Beispiel 5 MB
 
 # Ausfüllen, wenn "sendEmail" verwendert wird (Diese Parameter werden von sendEmail benötigt)
-MAILSERVER=        # Server (z.B. mail.gmx.net)
-MAILPORT=          # Port (z.B. 25 oder 587 für TLS)
-MAILUSER=          # z.B. My@mail.de
-MAILPASS=          # z.B. v784hcnfd <- eMail-Passwort
-MAILSENDER=        # Sendeadresse (z.B. My@mail.de)
+MAILSERVER=""        # Server (z.B. mail.gmx.net)
+MAILPORT=""          # Port (z.B. 25 oder 587 für TLS)
+MAILUSER=""          # z.B. My@mail.de
+MAILPASS=""          # z.B. v784hcnfd <- eMail-Passwort
+MAILSENDER=""        # Sendeadresse (z.B. My@mail.de)
 #USETLS="-o tls=yes" # TLS für die SMTP-Verbindung verwenden
 
 ############################### PRE- UND POST KONFIGURATION #############################
@@ -138,10 +138,10 @@ POST_ACTION=""
 # ${mount[$nr]} leer ist
 #target[$nr]="${mount[$nr]:-$MOUNT}/_Backup/VDR/Data"
 
-# [optional] Wert in Megabyte. Freier Platz, der auf dem Ziel mindestens frei
+# [optional] Wert in MegaByte. Freier Platz, der auf dem Ziel mindestens frei
 # sein muss. Bei Unterschreitung wird eine Warnung angezeigt und in das Fehlerlog
 # geschrieben. Das Backup wird NICHT angehalten! (Nur im Modus normal und multi)
-#minfree[$nr]="100"  # In MegaByte (1024 Byte) # 1024 = 1 GB
+#minfree[$nr]="100"  # In MegaByte (1024 KB) # 1024 = 1 GB
 
 # [optional] Wenn gesetzt, dann wird bei ungenügend freiem Speicher das Profil
 # nicht gestartet und ein Logeintrag im Fehlerlog erstellt (Nur im Modus normal/multi)
@@ -152,7 +152,7 @@ POST_ACTION=""
 # Kann mit skip_full[$nr] verwendet werden (Nur im Modus normal und multi)
 #dry_run[$nr]="1"  # Wenn gesetzt wird ein Testlauf durchgeführt
 
-# [optional] Wert in Megabyte. Freier Platz, der auf dem Ziel mindestens frei
+# [optional] Wert in MegaByte. Freier Platz, der auf dem Ziel mindestens frei
 # sein muss. Bei Unterschreitung wird eine Warnung angezeigt und in das Fehlerlog
 # geschrieben. Das Backup wird abgebrochen! Darf nicht mit minfree[$nr] verwendet
 # werden (Nur im Modus normal und multi)
