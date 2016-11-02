@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=161027                                                                          #
+VERSION=161102                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum und neueste Version: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk              #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -296,16 +296,19 @@ fi
 ##################################### KONFIG LADEN ######################################
 
 # Testen, ob Konfiguration angegeben wurde (-c ...)
-while getopts ":c:" opt ; do
+while getopts ":c:m:" opt ; do
   case "$opt" in
     c) CONFIG="$OPTARG"
        if [[ -f "$CONFIG" ]] ; then  # Konfig wurde angegeben und existiert
-         source "$CONFIG" ; CONFLOADED='Angegebene'
+         source "$CONFIG" ; CONFLOADED='Angegebene Konfiguration:'
          break
        else
          echo -e "$msgERR Die angegebene Konfigurationsdatei fehlt!\e[0m (\"${CONFIG}\")"
          f_exit 1
        fi
+    ;;
+    m) # Eigene Verzeichnisse an das Skript übergeben
+       CONFLOADED='Manuelle Sicherung! Keine Konfigurationsdatei verwendet. (-m)'
     ;;
     ?) ;;
   esac
@@ -318,7 +321,7 @@ if [[ -z "$CONFLOADED" ]] ; then     # Konfiguration wurde noch nicht geladen
   for dir in "${CONFIG_DIRS[@]}" ; do
     CONFIG="${dir}/${CONFIG_NAME}"
     if [[ -f "$CONFIG" ]] ; then
-      source "$CONFIG" ; CONFLOADED='Gefundene'
+      source "$CONFIG" ; CONFLOADED='Gefundene Konfiguration:'
       break  # Die erste gefundene Konfiguration wird verwendet
     fi
   done
@@ -341,7 +344,7 @@ tty --silent && clear
 echo -e "\e[44m \e[0;1m RSYNC BACKUP\e[0m\e[0;32m => Version: ${VERSION}\e[0m by MegaV0lt, http://j.mp/1TblNNj"
 echo -e '\e[44m \e[0m Original: 2011 by JaiBee, http://www.321tux.de/'
 # Anzeigen, welche Konfiguration geladen wurde!
-echo -e "\e[46m \e[0m $CONFLOADED Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
+echo -e "\e[46m \e[0m ${CONFLOADED}\e[1m\t${CONFIG}\e[0m\n"
 
 OPTIND=1  # Wird benötigt, weil getops ein weiteres mal verwendet wird!
 optspec=':p:ac:m:sd:e:fh-:'
@@ -492,7 +495,9 @@ if [[ -n "$PRE_ACTION" ]] ; then
 fi
 
 for PROFIL in "${P[@]}" ; do
-  f_settings ; f_bak_dir
+  f_settings
+  # Wenn -m verwendet wurde ist keine Konfiguration geladen!
+  [[ -z "$CONFIG" ]] && { BAK_DIR="${TARGET}/Geloeschte Dateien/$(date +%F)" ;} || f_bak_dir
 
   if [[ "$PROFIL" != "customBak" ]] ; then  # Nicht bei benutzerdefinierter Sicherung
     # "/" am Ende entfernen
