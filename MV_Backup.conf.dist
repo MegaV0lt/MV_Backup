@@ -185,23 +185,24 @@ POST_ACTION=""
 #video/
 #_EOF_
 
-# = = Profil 1  = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-nr=1                        # Fortlaufende Profil-Nummer
-  title[$nr]="VDR_Root"
-    arg[$nr]="r"
-   mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
-  mount[$nr]=""             # Eigener Einhängepunkt
- ftpsrc[$nr]=""             # Quelle ist ein FTP
- ftpmnt[$nr]=""             # Einhängepunkt für die FTP-Quelle
- source[$nr]="/"
- target[$nr]="${mount[$nr]:-$MOUNT}/_Backup/VDR/Root"
-minfree[$nr]=""             # In MegaByte (1024 Byte)
-skip_full[$nr]=""           # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
-dry_run[$nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
-minfree_bg[$nr]=""          # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
-    log[$nr]="${target[$nr]}/$(date +%F)_${title[$nr]}.log"
- exfrom[$nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
-rsync_opt[$nr]=""
+nr=0  # <- Nicht löschen! Wird für die Nummerierung der Profile beötigt!
+# = = = Profil 1  = = =
+((nr++))                       # Fortlaufende Profil-Nummer
+     title[$nr]="VDR_Root"     # Profilname
+       arg[$nr]="r"            # Argument (-p r)
+      mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
+     mount[$nr]=""             # Eigener Einhängepunkt
+    ftpsrc[$nr]=""             # Quelle ist ein FTP
+    ftpmnt[$nr]=""             # Einhängepunkt für die FTP-Quelle
+    source[$nr]="/"
+    target[$nr]="${mount[$nr]:-$MOUNT}/_Backup/VDR/Root"
+   minfree[$nr]=""             # In MegaByte (1024 KByte)
+ skip_full[$nr]=""             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
+   dry_run[$nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
+minfree_bg[$nr]=""             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
+       log[$nr]="${target[$nr]}/$(date +%F)_${title[$nr]}.log"
+    exfrom[$nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
+ rsync_opt[$nr]=""
 cat > "${exfrom[$nr]}" <<_EOF_
 dev/
 lost+found/
@@ -213,39 +214,39 @@ var/tmp/
 video/
 _EOF_
 
-# = = Beispiel für ein Profil, dass einen FTP-Server als Quelle hat = = = = = = = = = = =
-((nr++))                    # Variable nr um eins hochzählen
-  title[$nr]="FTP_Daten"
-    arg[$nr]="f"
-   mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
-  mount[$nr]=""             # Eigener Einhängepunkt
- ftpsrc[$nr]="ftp://myusername:mypassword@ftp.mydomain.com"  # Quelle ist ein FTP
- ftpmnt[$nr]="/mnt/remote_ftp"  # Einhängepunkt für die FTP-Quelle
- source[$nr]="${ftpmnt[$nr]}/html/includes"
- target[$nr]="${mount[$nr]:-$MOUNT}/_Backup/Mein_FTP/includes"
-minfree[$nr]=""             # In MegaByte (1024 Byte)
-skip_full[$nr]=""           # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
-dry_run[$nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
-minfree_bg[$nr]=""          # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
-    log[$nr]="${target[$nr]}/$(date +%F)_${title[$nr]}.log"
- exfrom[$nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
-rsync_opt[$nr]=""
+# = = = Beispiel für ein Profil, dass einen FTP-Server als Quelle hat = = =
+((nr++))                       # Variable nr um eins hochzählen
+     title[$nr]="FTP_Daten"    # Profilname
+       arg[$nr]="f"            # Argument (-p f)
+      mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
+     mount[$nr]=""             # Eigener Einhängepunkt
+    ftpsrc[$nr]="ftp://myusername:mypassword@ftp.mydomain.com"  # Quelle ist ein FTP
+    ftpmnt[$nr]="/mnt/remote_ftp"  # Einhängepunkt für die FTP-Quelle
+    source[$nr]="${ftpmnt[$nr]}/html/includes"
+    target[$nr]="${mount[$nr]:-$MOUNT}/_Backup/Mein_FTP/includes"
+   minfree[$nr]=""             # In MegaByte (1024 KByte)
+ skip_full[$nr]=""             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
+   dry_run[$nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
+minfree_bg[$nr]=""             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
+       log[$nr]="${target[$nr]}/$(date +%F)_${title[$nr]}.log"
+    exfrom[$nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
+ rsync_opt[$nr]=""
 cat > "${exfrom[$nr]}" <<_EOF_
 logs/
 .cnf
 _EOF_
 
-# = = Vorlage für neues Profil  = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+# = = = Vorlage für neues Profil  = = =
 #((nr++))                    # Variable nr um eins hochzählen
-#  title[$nr]=""
-#    arg[$nr]=""
+#  title[$nr]=""             # Profilname
+#    arg[$nr]=""             # Argument (-p)
 #   mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
 #  mount[$nr]=""             # Eigener Einhängepunkt
 # ftpsrc[$nr]=""             # Quelle ist ein FTP
 # ftpmnt[$nr]=""             # Einhängepunkt für die FTP-Quelle
 # source[$nr]=""
 # target[$nr]=""
-#minfree[$nr]=""             # In MegaByte (1024 Byte)
+#minfree[$nr]=""             # In MegaByte (1024 KByte)
 #skip_full[$nr]=""           # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
 #dry_run[$nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
 #minfree_bg[$nr]=""          # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft

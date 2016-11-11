@@ -1,9 +1,9 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=161027                                                                          #
+VERSION=161111                                                                         #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
-# Forum und neueste Version: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk              #
+# Forum: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk                                  #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
 #                                                                                       #
 # Alle Anpassungen zum Skript, kann man in der HISTORY und in der .conf nachlesen.      #
@@ -18,7 +18,7 @@ VERSION=161027                                                                  
 # Eine kurze Anleitung kann mit der Option -h aufgerufen werden.
 
 # Sämtliche Einstellungen werden in der *.conf vorgenommen.
-# -> Bitte ab hier nichts mehr ändern!
+######################### -> Bitte ab hier nichts mehr ändern! ##########################
 
 if ((BASH_VERSINFO[0] < 4)) ; then  # Test, ob min. Bash Version 4.0
   echo 'Sorry, dieses Skript benötigt Bash Version 4.0 oder neuer!' 2>/dev/null
@@ -218,7 +218,7 @@ f_countdown_wait() {
 
 f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
   local DF_LINE DF_FREE drylog mftext='MINFREE' TDATA TRANSFERRED
-  mapfile -t < <(df -B M "${TARGET}")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
+  mapfile -t < <(df -B M "$TARGET")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
   DF_LINE=(${MAPFILE[1]}) ; DF_FREE="${DF_LINE[3]%M}"  # Drittes Element ist der freie Platz (M)
   if [[ -n "$1" ]] ; then  # Log als Parameter = dry-run. Überschreibt MINFREE!
     drylog="$1" ; mftext='DRYRUN'
@@ -251,7 +251,7 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
 f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrundprozess [&])
   local DF_LINE DF_FREE
   while true ; do
-    mapfile -t < <(df -B M "${TARGET}")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
+    mapfile -t < <(df -B M "$TARGET")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
     DF_LINE=(${MAPFILE[1]}) ; DF_FREE="${DF_LINE[3]%M}"  # Drittes Element ist der freie Platz (M)
     #echo "-> Auf dem Ziel (${TARGET}) sind $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
     if [[ $DF_FREE -lt $MINFREE_BG ]] ; then
@@ -300,8 +300,7 @@ while getopts ":c:" opt ; do
   case "$opt" in
     c) CONFIG="$OPTARG"
        if [[ -f "$CONFIG" ]] ; then  # Konfig wurde angegeben und existiert
-         source "$CONFIG" ; CONFLOADED='Angegebene'
-         break
+         source "$CONFIG" ; CONFLOADED='Angegebene' ; break
        else
          echo -e "$msgERR Die angegebene Konfigurationsdatei fehlt!\e[0m (\"${CONFIG}\")"
          f_exit 1
@@ -400,6 +399,7 @@ done
 if [[ -z "${P[*]}" ]] ; then
   if [[ "${#arg[@]}" -eq 1 ]] ; then  # Wenn nur ein Profil definiert ist, dieses automatisch auswählen
     P=("${arg[@]}")  # Profil zuweisen
+    msgAUTO='(auto)'  # Text zur Anzeige
   else
     echo -e "$msgERR Es wurde kein Profil angegeben!\e[0m\n" ; f_help
   fi
@@ -425,7 +425,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
 
   # Konfiguration zu allen gewählten Profilen anzeigen
   #echo -e "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} \e[0m"
-  printf '%-80b' "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE}" ; printf '%b\n' '\e[0m'
+  printf '%-80b' "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} $msgAUTO" ; printf '%b\n' '\e[0m'
   echo -e "\e[46m \e[0m Sicherungsmodus:\e[1m\t${MODE_TXT}\e[0m"
   echo -e "\e[46m \e[0m Quellverzeichnis(se):\e[1m\t${SOURCE:=${MAN_SOURCE[*]}}\e[0m"
   echo -e "\e[46m \e[0m Zielverzeichnis:\e[1m\t${TARGET}\e[0m"
@@ -565,14 +565,14 @@ for PROFIL in "${P[@]}" ; do
         RC=$? ; [[ $RC -ne 0 ]] && { RSYNCRC+=("$RC") ; RSYNCPROF+=("$TITLE") ;}  # Profilname und Fehlercode merken
 
         [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden!
-        [[ -e "${TMPDIR}/.stopflag" ]] && FINISHEDTEXT='abgebrochen!'  # Platte voll!
-
-        if [[ -z "$FINISHEDTEXT" ]] ; then  # Alte Daten nur löschen wenn nicht abgebrochen wurde!
+        if [[ -e "${TMPDIR}/.stopflag" ]] ; then
+          FINISHEDTEXT='abgebrochen!'  # Platte voll!
+        else  # Alte Daten nur löschen wenn nicht abgebrochen wurde!
           # Funktion zum Löschen alter Sicherungen aufrufen
           [[ -n "$DEL_OLD_BACKUP" ]] && f_del_old_backup "${BAK_DIR%/*}"
           # Funktion zum Löschen alter Dateien auf der Quelle ($1=Quelle $2=Ziel)
           [[ -n "$DEL_OLD_SOURCE" ]] && f_del_old_source "$SOURCE" "$R_TARGET"
-        fi  # FINISHEDTEXT
+        fi  # -e .stopflag
       fi  # SKIP_FULL
     ;;
     S) ### Snapshot Sicherung
@@ -902,7 +902,7 @@ fi
 
 # Zuvor eingehängte(s) Sicherungsziel(e) wieder aushängen
 if [[ ${#UNMOUNT[@]} -ge 1 ]] ; then
-  echo "Zuvor eingehängte Sicherungsziele werden wieder ausgehängt..."
+  echo 'Zuvor eingehängte Sicherungsziele werden wieder ausgehängt...'
   for volume in "${UNMOUNT[@]}" ; do
     umount --force "$volume"
   done
