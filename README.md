@@ -9,3 +9,5 @@ Das Skript benötigt "Bash" ab Version 4. Ich versuche wenn möglich auf exteren
 Die verwendung geschieht wie immer auf eigene Gefahr. Wer Fehler findet, kann hier ein Ticket eröffnen oder im DEB eine Anfrage stellen. Auch neue Funktionen baue ich gerne ein, so sie mir denn als sinnvoll erscheinen.
 
 Die Konfiguration erfolgt über die .conf welche viele (hoffentlich) aussagekräftige Kommentare enthält.
+
+Support im Forum (DEB): http://j.mp/1TblNNj oder hier im GIT
