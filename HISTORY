@@ -87,3 +87,5 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
 10.10.2016
  Neu:  Wenn in der *.conf nur ein Profil definiert ist, wird es automatisch ausgewählt,
        falls nicht per Parameter -p oder -a angegeben
+04.12.2016
+ Neu:  Prüfung auf eindeutige Sicherungsziele.

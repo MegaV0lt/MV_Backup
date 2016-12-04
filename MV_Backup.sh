@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=161111                                                                         #
+VERSION=161204                                                                         #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk                                  #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -36,7 +36,7 @@ SELF="$(readlink /proc/$$/fd/255)" || SELF="$0"  # Eigener Pfad (besseres $0)
 SELF_NAME="${SELF##*/}"                          # skript.sh
 TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")  # Ordner für temporäre Dateien
 declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Array's
-declare -A _arg JOBS  # Array JOBS wird für den Multi rsync-Modus benötigt
+declare -A _arg _target JOBS  # Array JOBS wird für den Multi rsync-Modus benötigt
 msgERR='\e[1;41m FEHLER! \e[0;1m'  # Anzeige "FEHLER!"
 
 ###################################### FUNKTIONEN #######################################
@@ -407,9 +407,14 @@ fi
 
 # Prüfen ob alle Profile eindeutige Buchstaben haben (arg[$nr])
 for parameter in "${arg[@]}" ; do
-  [[ -z "${_arg[$parameter]+_}" ]] && { _arg[$parameter]=1 || \
-    { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" ; f_exit ;}
-    }
+  [[ -z "${_arg[$parameter]+_}" ]] && { _arg[$parameter]=1 ;} \
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" ; f_exit ;}
+done
+
+# Prüfen ob alle Profile eindeutige Sicherungsziele verwenden (target[$nr])
+for parameter in "${target[@]}" ; do
+  [[ -z "${_target[$parameter]+_}" ]] && { _target[$parameter]=1 ;} \
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => target[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" ; f_exit ;}
 done
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
@@ -702,9 +707,9 @@ for PROFIL in "${P[@]}" ; do
             echo "rsync ${RSYNC_OPT[*]} --log-file=${LOG%.log}_$cnt.log --exclude-from=$EXFROM ${EXTRAEXCLUDE[*]} --backup-dir=${BAK_DIR}/${subfolder} ${SOURCE}/${subfolder}/ ${R_TARGET}/${subfolder}/" >> "${LOG%.log}_$cnt.log"
             nohup rsync "${RSYNC_OPT[@]}" --log-file="${LOG%.log}_$cnt.log" --exclude-from="$EXFROM" "${EXTRAEXCLUDE[@]}" --backup-dir="${BAK_DIR}/${subfolder}" \
                     "${SOURCE}/${subfolder}/" "${R_TARGET}/${subfolder}/" </dev/null >/dev/null 2>> "$ERRLOG" &
-            JOBS[$!]="${TITLE}_$cnt" # Array-Element=PID; Inhalt=Profilname mit Zähler
-            echo "$!]" ; sleep 0.1   # Kleine Wartezeit, damit nicht alle rsyncs auf einmal starten
-            unset -v 'EXTRAEXCLUDE'  # Zurücksetzen für den nächsten Durchlauf
+            JOBS[$!]="${TITLE}_$cnt"  # Array-Element=PID; Inhalt=Profilname mit Zähler
+            echo "$!]" ; sleep 0.1    # Kleine Wartezeit, damit nicht alle rsyncs auf einmal starten
+            unset -v 'EXTRAEXCLUDE'   # Zurücksetzen für den nächsten Durchlauf
           fi
         done < <(find . -maxdepth $depth -type d)  # Die < <(commands) Syntax verarbeitet alles im gleichen Prozess. Änderungen von globalen Variablen sind so möglich
 
