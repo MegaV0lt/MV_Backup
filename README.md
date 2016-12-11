@@ -19,7 +19,7 @@ Benötigt werden (U. a. Konfigurationsabhängig):
 - curlftpfs (Sicherung von FTP)
 - nproc (Im Paket coreutils; Für den Multi-rsync-Modus)
 - sendmail, uuencode, mpack, sendEmail oder email (Für eMailversand; je nach Konfiguration)
-- tar (Um gepackte Log-Dateien per eMail senden)
+- tar (Um gepackte Log-Dateien per eMail zu senden)
 - ...
 
 Die Konfiguration erfolgt über die .conf welche viele (hoffentlich) aussagekräftige Kommentare enthält.
