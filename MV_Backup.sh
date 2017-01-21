@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=161204                                                                         #
+VERSION=170121                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk                                  #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -871,7 +871,9 @@ if [[ -n "$MAILADRESS" ]] ; then
         echo -e "\n==> Belegung von ${LOGDIR}:"
         du --human-readable --summarize "$LOGDIR"
         du --human-readable --summarize "${LOGDIR}/${FILES_DIR}"
-        du --human-readable --summarize "${BAK_DIR%/*}"
+        _BAK_DIR="${BAK_DIR##*/}"  # Letztes Verzeichnis (Geloeschte Dateien)
+        [[ -n "$_BAK_DIR" && -d "${LOGDIR}/${_BAK_DIR}" ]] && \
+          du --human-readable --summarize "${LOGDIR}/${_BAK_DIR}"
       } >> "$MAILFILE"
     fi  # SHOWCONTENT
   done
