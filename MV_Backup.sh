@@ -1,7 +1,7 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=170121                                                                          #
+VERSION=170128                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk                                  #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -870,10 +870,14 @@ if [[ -n "$MAILADRESS" ]] ; then
         # Anzeige der Belegung des Sicherungsverzeichnisses und Unterordner
         echo -e "\n==> Belegung von ${LOGDIR}:"
         du --human-readable --summarize "$LOGDIR"
-        du --human-readable --summarize "${LOGDIR}/${FILES_DIR}"
-        _BAK_DIR="${BAK_DIR##*/}"  # Letztes Verzeichnis (Geloeschte Dateien)
-        [[ -n "$_BAK_DIR" && -d "${LOGDIR}/${_BAK_DIR}" ]] && \
-          du --human-readable --summarize "${LOGDIR}/${_BAK_DIR}"
+        ## TODO: Besseren Weg finden
+        for dir in ${LOGDIR}/*/ ; do  # Geht nur ohne "
+          du --human-readable --summarize "$dir"
+        done
+        #du --human-readable --summarize "${LOGDIR}/${FILES_DIR}"
+        #_BAK_DIR="${BAK_DIR##*/}" ; _BAK_DIR="${_BAK_DIR##*/}"  # Letztes Verzeichnis (Geloeschte Dateien/[Datum])
+        #[[ -n "$_BAK_DIR" && -d "${LOGDIR}/${_BAK_DIR}" ]] && \
+        #  du --human-readable --summarize "${LOGDIR}/${_BAK_DIR}"
       } >> "$MAILFILE"
     fi  # SHOWCONTENT
   done
