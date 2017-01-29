@@ -8,7 +8,7 @@ Auf der Suche nach einer einfachen Backup-Lösung für meine Linux PC's (VDR und
 ![Hilfe](help.png)
 
 So sieht eine eMail (Abschaltbar oder nur im Fehlerfall) nach erfolger Sicherung aus:
-![Sicherungs-Bericht](Sicherungs-bericht.png)
+![Sicherungs-Bericht](Sicherungs-Bericht.png)
 
 Das Skript benötigt "GNU Bash" ab Version 4. Ich versuche wenn möglich auf externe Programme wie sed oder awk zu verzichten. Trotzdem benötigt das Skript einige weitere externe Programme. Konfigurationsabhängig werden noch mount oder curlftpfs benötigt.
 Die Verwendung geschieht wie immer auf eigene Gefahr. Wer Fehler findet, kann hier ein Ticket eröffnen oder im DEB eine Anfrage stellen. Auch neue Funktionen baue ich gerne ein, so sie mir denn als sinnvoll erscheinen.
