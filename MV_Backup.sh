@@ -1,7 +1,6 @@
 #!/bin/bash
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
-VERSION=170128                                                                          #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
 # Forum: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk                                  #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
@@ -12,26 +11,25 @@ VERSION=170128                                                                  
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+VERSION=170210
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
 # Eine kurze Anleitung kann mit der Option -h aufgerufen werden.
 
 # Sämtliche Einstellungen werden in der *.conf vorgenommen.
-######################### -> Bitte ab hier nichts mehr ändern! ##########################
-
+# ---> Bitte ab hier nichts mehr ändern! <---
 if ((BASH_VERSINFO[0] < 4)) ; then  # Test, ob min. Bash Version 4.0
   echo 'Sorry, dieses Skript benötigt Bash Version 4.0 oder neuer!' 2>/dev/null
   exit 1
 fi
 
-# Skriptausgaben zusätzlich in Datei speichern.
-#exec > >(tee -a /var/log/MV_Backup.log) 2>&1
+# Skriptausgaben zusätzlich in Datei speichern. (DEBUG)
+# exec > >(tee -a /var/log/MV_Backup.log) 2>&1
 
-################################## INTERNE VARIABLEN ####################################
-
-#_DEBUG="on" # Aktivieren für Debugausgaben! Im Skript dann z.B. DEBUG set -x
-             # Normalerweise sollte _DEBUG auskommentiert sein (#_DEBUG="on")
+# --- INTERNE VARIABLEN ---
+# _DEBUG="on" # Aktivieren für Debugausgaben! Im Skript dann z.B. DEBUG set -x
+              # Normalerweise sollte _DEBUG auskommentiert sein (#_DEBUG="on")
 SELF="$(readlink /proc/$$/fd/255)" || SELF="$0"  # Eigener Pfad (besseres $0)
 SELF_NAME="${SELF##*/}"                          # skript.sh
 TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")  # Ordner für temporäre Dateien
@@ -39,8 +37,7 @@ declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Array's
 declare -A _arg _target JOBS  # Array JOBS wird für den Multi rsync-Modus benötigt
 msgERR='\e[1;41m FEHLER! \e[0;1m'  # Anzeige "FEHLER!"
 
-###################################### FUNKTIONEN #######################################
-
+# --- FUNKTIONEN ---
 trap 'f_exit 3' SIGHUP SIGINT SIGQUIT SIGABRT  # Bei unerwarteten Ende (Strg-C) aufräumen
 
 DEBUG() {  # Verwenden mit "DEBUG echo $VAR; DEBUG set -x"
@@ -65,8 +62,7 @@ f_mfs_kill() {
   if [[ -n "$MFS_PID" ]] ; then
     echo '-> Beende Hintergrundüberwachung...'
     kill "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
-    ps --pid "$MFS_PID" &>/dev/null
-    if [[ $? -eq 0 ]] ; then  # Noch aktiv!
+    if ps --pid "$MFS_PID" &>/dev/null ; then  # Noch aktiv!
       echo '!> Hintergrundüberwachung konnte nicht beendet werden! Versuche erneut...'
       kill -9 "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
     else
@@ -268,20 +264,17 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
   done
 }
 
-##################################### AUSFÜHRBAR? #######################################
-
+# --- AUSFÜHRBAR? ---
 if [[ ! -x "$SELF" ]] ; then
   echo -e '\e[30;103m WARNUNG \e[0;1m Das Skript ist nicht ausführbar!\e[0m'
   echo 'Bitte folgendes ausführen: chmod +x' "$SELF" ; f_exit 1
 fi
 
-####################################### LOCKING #########################################
-
+# --- LOCKING ---
 PIDFILE="/var/run/${SELF_NAME%.*}.pid"
 if [[ -f "$PIDFILE" ]] ; then  # PID-Datei existiert
   PID="$(< "$PIDFILE")"        # PID einlesen
-  ps --pid "$PID" &>/dev/null
-  if [[ $? -eq 0 ]] ; then     # Skript läuft schon!
+  if ps --pid "$PID" &>/dev/null ; then  # Skript läuft schon!
     echo -e "$msgERR Das Skript läuft bereits!\e[0m (PID: $PID)"
     f_exit 4                   # Beenden aber PID-Datei nicht löschen
   else  # Prozess nicht gefunden. PID-Datei überschreiben
@@ -293,8 +286,7 @@ else                           # PID-Datei existiert nicht. Neu anlegen
     || { echo -e "$msgERR Die PID-Datei konnte nicht erzeugt werden!\e[0m" ; f_exit 1 ;}
 fi
 
-##################################### KONFIG LADEN ######################################
-
+# --- KONFIGURATION LADEN ---
 # Testen, ob Konfiguration angegeben wurde (-c ...)
 while getopts ":c:" opt ; do
   case "$opt" in
@@ -321,14 +313,13 @@ if [[ -z "$CONFLOADED" ]] ; then     # Konfiguration wurde noch nicht geladen
       break  # Die erste gefundene Konfiguration wird verwendet
     fi
   done
-  if [[ -z "$CONFLOADED" ]] ; then   # Konfiguration wurde nicht gefunden
+  if [[ -z "$CONFLOADED" ]] ; then  # Konfiguration wurde nicht gefunden
     echo -e "$msgERR Keine Konfigurationsdatei gefunden!\e[0m (\"${CONFIG_DIRS[*]}\")"
     f_help
   fi
 fi
 
-######################################### START #########################################
-
+# --- START ---
 # Wenn eine grafische Oberfläche vorhanden ist, wird u.a. "notify-send" für Benachrichtigungen verwendet, ansonsten immer "echo"
 if [[ -n "$DISPLAY" ]] ; then
   NOTIFY='notify-send' ; WALL='wall'
@@ -418,7 +409,7 @@ for parameter in "${target[@]}" ; do
 done
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
-#[[ -n "$SHUTDOWN" && "$(whoami)" != "root" ]] && echo -e "$msgERR Zum automatischen Herunterfahren sind Root-Rechte erforderlich!\e[0m\n" && f_help
+# [[ -n "$SHUTDOWN" && "$(whoami)" != "root" ]] && echo -e "$msgERR Zum automatischen Herunterfahren sind Root-Rechte erforderlich!\e[0m\n" && f_help
 
 [[ -n "$SHUTDOWN" ]] && echo -e '  \e[1;31mDer Computer wird nach Durchführung der Sicherung(en) automatisch heruntergefahren!\e[0m'
 
@@ -429,7 +420,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   [[ "$PROFIL" != "$ARG" && "$PROFIL" != "customBak" ]] && { echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" ; f_help ;}
 
   # Konfiguration zu allen gewählten Profilen anzeigen
-  #echo -e "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} \e[0m"
+  # echo -e "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} \e[0m"
   printf '%-80b' "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} $msgAUTO" ; printf '%b\n' '\e[0m'
   echo -e "\e[46m \e[0m Sicherungsmodus:\e[1m\t${MODE_TXT}\e[0m"
   echo -e "\e[46m \e[0m Quellverzeichnis(se):\e[1m\t${SOURCE:=${MAN_SOURCE[*]}}\e[0m"
@@ -490,10 +481,10 @@ if [[ -n "${MISSING[*]}" ]] ; then  # Fehlende Programme anzeigen
   f_exit 1
 fi
 
-### PRE_ACTION
+# --- PRE_ACTION ---
 if [[ -n "$PRE_ACTION" ]] ; then
-  echo 'Führe PRE_ACTION-Befehl(e) aus...' ; eval "$PRE_ACTION"
-  [[ $? -gt 0 ]] && echo "Fehler beim Ausführen von \"${PRE_ACTION}\"!" && sleep 10
+  echo 'Führe PRE_ACTION-Befehl(e) aus...'
+  eval "$PRE_ACTION" || { echo "Fehler beim Ausführen von \"${PRE_ACTION}\"!" ; sleep 10 ;}
 fi
 
 for PROFIL in "${P[@]}" ; do
@@ -509,7 +500,6 @@ for PROFIL in "${P[@]}" ; do
       echo -e -n "Versuche Sicherungsziel (${MOUNT}) einzuhängen..."
       mount "$MOUNT" &>/dev/null \
         || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
-      #grep -q "$MOUNT" /proc/mounts || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
       echo -e "OK.\nDas Sicherungsziel (\"${MOUNT}\") wurde erfolgreich eingehängt."
       UNMOUNT+=("$MOUNT")  # Nach Sicherung wieder aushängen (Einhängepunkt merken)
     fi
@@ -531,7 +521,7 @@ for PROFIL in "${P[@]}" ; do
   unset -v 'FINISHEDTEXT' 'MFS_PID'
 
   case $MODE in
-    N) ### Normale Sicherung (inkl. customBak)
+    N) # Normale Sicherung (inkl. customBak)
       # Ggf. Verzeichnis für gelöschte Dateien erstellen
       [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" || f_exit 1 ;}
       R_TARGET="${TARGET}/${FILES_DIR}"  # Ordner für die gesicherten Dateien
@@ -556,7 +546,7 @@ for PROFIL in "${P[@]}" ; do
 
       # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
       if [[ -z "$SKIP_FULL" ]] ; then
-        ### Sicherung mit rsync starten ###
+        # Sicherung mit rsync starten
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT[*]} --log-file=$LOG --exclude-from=$EXFROM --backup-dir=$BAK_DIR $SOURCE $R_TARGET" >> "$LOG"
         echo '-> Starte Sicherung (rsync)...'
@@ -580,7 +570,7 @@ for PROFIL in "${P[@]}" ; do
         fi  # -e .stopflag
       fi  # SKIP_FULL
     ;;
-    S) ### Snapshot Sicherung
+    S) # Snapshot Sicherung
       # Temporäre Verzeichnisse, die von fehlgeschlagenen Sicherungen noch vorhanden sind löschen
       rm --recursive --force "${TARGET}/tmp_????-??-??*" 2>/dev/null
 
@@ -612,9 +602,9 @@ for PROFIL in "${P[@]}" ; do
 
       if [[ -z "$NOT_CHANGED" ]] ; then  # Keine Sicherung nötig?
         f_countdown_wait                 # Countdown vor dem Start anzeigen
-        ### Sicherung mit rsync starten ###
+        #   Sicherung mit rsync starten
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
-        echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBACKDIR" >> "$LOG"
+        echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBAKDIR" >> "$LOG"
         echo '-> Starte Sicherung (rsync)...'
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" >/dev/null 2>> "$ERRLOG"
@@ -627,7 +617,7 @@ for PROFIL in "${P[@]}" ; do
       fi
       unset -v 'NOT_CHANGED'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
     ;;
-    M) ### Multi rsync (Experimentell)! Quelle: www.krazyworks.com/making-rsync-faster
+    M) # Multi rsync (Experimentell)! Quelle: www.krazyworks.com/making-rsync-faster
       # Ggf. Verzeichnis für gelöschte Dateien erstellen
       [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" || f_exit 1 ;}
 
@@ -679,11 +669,11 @@ for PROFIL in "${P[@]}" ; do
                 if [[ "$(f_remove_slash "$ONTOP")" == "$subfolder" ]] ; then
                   continue 2  # Ordner auslassen, wenn "/foo" oder "/foo/"
                 else  # "/foo/bar"
-                  exdir="${ONTOP%%/*}"  #; echo "ONTOP aber mit Unterordner: /$ONTOP"
+                  exdir="${ONTOP%%/*}"  # ; echo "ONTOP aber mit Unterordner: /$ONTOP"
                   if [[ "$exdir" == "$subfolder" ]] ; then
                     newex="/${ONTOP#*/}"  # "foo/bar" -> "/bar"
                     EXTRAEXCLUDE+=("--exclude=${newex}")
-                    #echo "Eintrag: ${MAPFILE[$i]} ->EXDIR: /$exdir ->EXCLUDE: $newex"
+                    # echo "Eintrag: ${MAPFILE[$i]} ->EXDIR: /$exdir ->EXCLUDE: $newex"
                   fi
                 fi
               fi  # Beginnt mit "/"
@@ -785,7 +775,7 @@ for PROFIL in "${P[@]}" ; do
   unset -v 'RC' 'ERRTEXT'  # $RC und $ERRTEXT zurücksetzen
 done
 
-# eMail senden
+# --- eMail senden ---
 if [[ -n "$MAILADRESS" ]] ; then
   DEBUG set -x
   # Variablen
@@ -870,13 +860,13 @@ if [[ -n "$MAILADRESS" ]] ; then
         # Anzeige der Belegung des Sicherungsverzeichnisses und Unterordner
         echo -e "\n==> Belegung von ${LOGDIR}:"
         du --human-readable --summarize "$LOGDIR"
-        ## TODO: Besseren Weg finden
+        # TODO: Besseren Weg finden
         for dir in ${LOGDIR}/*/ ; do  # Geht nur ohne "
           du --human-readable --summarize "$dir"
         done
-        #du --human-readable --summarize "${LOGDIR}/${FILES_DIR}"
-        #_BAK_DIR="${BAK_DIR##*/}" ; _BAK_DIR="${_BAK_DIR##*/}"  # Letztes Verzeichnis (Geloeschte Dateien/[Datum])
-        #[[ -n "$_BAK_DIR" && -d "${LOGDIR}/${_BAK_DIR}" ]] && \
+        # du --human-readable --summarize "${LOGDIR}/${FILES_DIR}"
+        # _BAK_DIR="${BAK_DIR##*/}" ; _BAK_DIR="${_BAK_DIR##*/}"  # Letztes Verzeichnis (Geloeschte Dateien/[Datum])
+        # [[ -n "$_BAK_DIR" && -d "${LOGDIR}/${_BAK_DIR}" ]] && \
         #  du --human-readable --summarize "${LOGDIR}/${_BAK_DIR}"
       } >> "$MAILFILE"
     fi  # SHOWCONTENT
@@ -919,10 +909,10 @@ if [[ ${#UNMOUNT[@]} -ge 1 ]] ; then
   done
 fi
 
-### POST_ACTION
+# --- POST_ACTION ---
 if [[ -n "$POST_ACTION" ]] ; then
-  echo 'Führe POST_ACTION-Befehl(e) aus...' ; eval "$POST_ACTION"
-  [[ $? -gt 0 ]] && echo "Fehler beim Ausführen von \"${POST_ACTION}\"!" && sleep 10
+  echo 'Führe POST_ACTION-Befehl(e) aus...'
+  eval "$POST_ACTION" || { echo "Fehler beim Ausführen von \"${POST_ACTION}\"!" ; sleep 10 ;}
   unset -v 'POST_ACTION'
 fi
 
