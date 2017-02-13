@@ -3,7 +3,17 @@ RSYNC Backup Skript
 
 Ein Backup-Skript für die Linux-Konsole (Bash/Terminal)
 
-Auf der Suche nach einer einfachen Backup-Lösung für meine Linux PC's (VDR und Debian-Server) bin ich irgendwann auch das Backup-Skript von 321tux.de gestoßen. Nach dem mit Hilfe des Betreibers ein kleineres Problem mit dem Skript gelöst wurde, habe ich begonnen einige Erweiterungen einzubauen.
+Weiterentwicklung des rsyanc-Backup-Skripts von 321tux.de. Zusätzliche Funktionen sind unter Anderem:
+- Automatisches Ein- und Aushängen des Sicherungs-Ziels, wenn in der fstab vorhanden (noauto)
+- Entfernen von alten Sicherungen und Log-Dateien nach einstellbarer Zeit (Tage)
+- Konfiguration ausgelagert, um den Einsatz auf mehreren Systemen zu vereinfachen
+- Quelle als FTP definierbar. Zum Einhängen wird curlftps benötigt
+- Versand der Logs per eMail (Optional nur bei Fehlern). Verschiedene Mailer werden unterstützt
+- eMail-Bericht mit Angaben zu Fehlern, Belegung der Sicherungen und der Sicherungsziele (Auflistung abschaltbar)
+- Sicherungsziel kann Profilabhängig definiert werden (mount[])
+- Experimenteller "Multi-rsync-Modus" kann in der .conf aktivert werden. Es werden für jeden Ordner im Stammverzeichnis einzelne rsync-Prozesse gestartet                                                     
+- Verschiedene Möglichkeiten den freien Platz auf dem Ziellaufwerk zu überwachen
+
 
 ![Hilfe](help.png)
 
