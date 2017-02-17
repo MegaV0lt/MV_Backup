@@ -44,9 +44,9 @@ MFS_TIMEOUT="300"  # Zeit in Sekunden
 ############################### EMAIL KONFIGURATION #####################################
 
 # Mailer, der verwendet werden soll. Mögliche Optionen sind:
-# mpack (In Verbindung mit ssmtp), sendmail, sendEmail (http://j.mp/Xo69II)
-# oder email (http://j.mp/1LwMBut)
-MAILPROG="mpack"   # mpack, sendmail, sendEmail oder email
+# mpack (In Verbindung mit ssmtp), sendmail, sendEmail (http://j.mp/Xo69II),
+# mail oder email (http://j.mp/1LwMBut)
+MAILPROG="mpack"   # mpack, sendmail, sendEmail, mail oder email
 
 # eMail-Empfänger (My@mail.de)
 # Nur ausfüllen, wenn man kein -e ... verwenden will (z.B. für crontab)

@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170210
+VERSION=170217
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -20,7 +20,7 @@ VERSION=170210
 # Sämtliche Einstellungen werden in der *.conf vorgenommen.
 # ---> Bitte ab hier nichts mehr ändern! <---
 if ((BASH_VERSINFO[0] < 4)) ; then  # Test, ob min. Bash Version 4.0
-  echo 'Sorry, dieses Skript benötigt Bash Version 4.0 oder neuer!' 2>/dev/null
+  echo 'Sorry, dieses Skript benötigt Bash Version 4.0 oder neuer!' >&2
   exit 1
 fi
 
@@ -124,30 +124,30 @@ f_settings() {
         MINFREE="${minfree[$i]}" ; SKIP_FULL="${skip_full[$i]}" ; DRY_RUN="${dry_run[$i]}"
         MINFREE_BG="${minfree_bg[$i]}"
         # Erforderliche Werte prüfen, und ggf. Vorgaben setzen
-        notset="\e[1;41m -LEER- \e[0m"  # Anzeige, wenn nicht gesetzt
+        notset='\e[1;41m -LEER- \e[0m'  # Anzeige, wenn nicht gesetzt
         if [[ -z "$SOURCE" || -z "$TARGET" ]] ; then
-          echo -e "$msgERR Quelle und/oder Ziel sind nicht konfiguriert!\e[0m"
+          echo -e "$msgERR Quelle und/oder Ziel sind nicht konfiguriert!\e[0m" >&2
           echo -e " Profil:    \"${TITLE:-$notset}\"\n Parameter: \"${ARG:-$notset}\" (Nummer: $i)"
           echo -e " Quelle:    \"${SOURCE:-$notset}\"\n Ziel:      \"${TARGET:-$notset}\"" ; f_exit 1
         fi
         if [[ -n "$FTPSRC" && -z "$FTPMNT" ]] ; then
-          echo -e "$msgERR FTP-Quelle und Einhängepunkt falsch konfiguriert!\e[0m"
+          echo -e "$msgERR FTP-Quelle und Einhängepunkt falsch konfiguriert!\e[0m" >&2
           echo -e " Profil:        \"${TITLE:-$notset}\"\n Parameter:     \"${ARG:-$notset}\" (Nummer: $i)"
           echo -e " FTP-Quelle:    \"${FTPSRC:-$notset}\"\n Einhängepunkt: \"${FTPMNT:-$notset}\"" ; f_exit 1
         fi
         if [[ -n "$DEL_OLD_SOURCE" && "${#P[@]}" -ne 1 ]] ; then
-          echo -e "$msgERR \"--del-old-source\" kann nicht mit mehreren Profilen verwendet werden!\e[0m"
+          echo -e "$msgERR \"--del-old-source\" kann nicht mit mehreren Profilen verwendet werden!\e[0m" >&2
           f_exit 1
         fi
         if [[ -n "$MINFREE" && -n "$MINFREE_BG" ]] ; then
-          echo -e "$msgERR minfree und minfree_bg sind gesetzt! Bitte nur einen Wert verwenden!\e[0m"
+          echo -e "$msgERR minfree und minfree_bg sind gesetzt! Bitte nur einen Wert verwenden!\e[0m" >&2
           echo -e " Profil:     \"${TITLE:-$notset}\"\n Parameter:  \"${ARG:-$notset}\" (Nummer: $i)"
           echo -e " MINFREE:    \"${MINFREE:-$notset}\"\n MINFREE_BG: \"${MINFREE_BG:-$notset}\"" ; f_exit 1
         fi
         : "${TITLE:=Profil_${ARG}}"  # Wenn Leer, dann Profil_ gefolgt von Parameter
         : "${LOG:=${TMPDIR}/${SELF_NAME%.*}.log}"  # Temporäre Logdatei
         : "${FILES_DIR:=_DATEIEN}"                 # Vorgabe für Sicherungsordner
-        ### Bei mehreren Profilen müssen die Werte erst gesichert und später wieder zurückgesetzt werden ###
+        # Bei mehreren Profilen müssen die Werte erst gesichert und später wieder zurückgesetzt werden
         [[ -n "${mount[$i]}" ]] && { _MOUNT="${MOUNT:-0}" ; MOUNT="${mount[$i]}" ;}  # Eigener Einhängepunkt
         case "${MODE^^}" in  # ${VAR^^} ergibt Großbuchstaben!
           SNAP*) MODE='S' ; MODE_TXT='Snapshot'
@@ -196,13 +196,13 @@ f_del_old_source() {   # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Qu
       unset -v 'MAPFILE[$i]'  # Datei aus der Liste entfernen!
     fi
   done
-  printf "%s\n" "${MAPFILE[@]}" #| xargs rm --verbose '{}' >> "$LOG"
+  printf "%s\n" "${MAPFILE[@]}" # | xargs rm --verbose '{}' >> "$LOG"
   # Leere Ordner älter als $DEL_OLD_SOURCE in Quelle löschen
-  find "./" -type d -empty -mtime +"$DEL_OLD_SOURCE" #-delete >> "$LOG"
+  find "./" -type d -empty -mtime +"$DEL_OLD_SOURCE" # -delete >> "$LOG"
 }
 
 f_countdown_wait() {
-  #echo -e "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet\e[0m"
+  # echo -e "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet\e[0m"
   printf '%-80b' "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet" ; printf '%b\n' '\e[0m'
   echo -e '\e[46m \e[0m Zum Abbrechen [Strg] + [C] drücken\n\e[46m \e[0m Zum Pausieren [Strg] + [Z] drücken (Fortsetzen mit \"fg\")\n'
   for i in {5..1} ; do  # Countdown ;)
@@ -219,7 +219,7 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
   if [[ -n "$1" ]] ; then  # Log als Parameter = dry-run. Überschreibt MINFREE!
     drylog="$1" ; mftext='DRYRUN'
     TRANSFERRED=($(tail --lines=15 "$drylog" | grep "Total transferred file size:"))
-    #echo "Transferiert (DRY-RUN): ${TRANSFERRED[@]}"
+    # echo "Transferiert (DRY-RUN): ${TRANSFERRED[@]}"
     case ${TRANSFERRED[7]} in
       *K) TDATA=${TRANSFERRED[7]%K} ; MINFREE=$((${TDATA%.*}/1024 + 1)) ;;  # 1K-999K
       *M) TDATA=${TRANSFERRED[7]%M} ; MINFREE=$((${TDATA%.*} + 1)) ;;       # MB +1
@@ -249,7 +249,7 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
   while true ; do
     mapfile -t < <(df -B M "$TARGET")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
     DF_LINE=(${MAPFILE[1]}) ; DF_FREE="${DF_LINE[3]%M}"  # Drittes Element ist der freie Platz (M)
-    #echo "-> Auf dem Ziel (${TARGET}) sind $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
+    # echo "-> Auf dem Ziel (${TARGET}) sind $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
     if [[ $DF_FREE -lt $MINFREE_BG ]] ; then
       touch "${TMPDIR}/.stopflag"  # Für den Multi-rsync-Modus benötigt
       echo -e "\e[103m \e[0m Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
@@ -275,15 +275,15 @@ PIDFILE="/var/run/${SELF_NAME%.*}.pid"
 if [[ -f "$PIDFILE" ]] ; then  # PID-Datei existiert
   PID="$(< "$PIDFILE")"        # PID einlesen
   if ps --pid "$PID" &>/dev/null ; then  # Skript läuft schon!
-    echo -e "$msgERR Das Skript läuft bereits!\e[0m (PID: $PID)"
+    echo -e "$msgERR Das Skript läuft bereits!\e[0m (PID: $PID)" >&2
     f_exit 4                   # Beenden aber PID-Datei nicht löschen
   else  # Prozess nicht gefunden. PID-Datei überschreiben
     echo "$$" > "$PIDFILE" \
-      || { echo -e "$msgERR Die PID-Datei konnte nicht überschrieben werden!\e[0m" ; f_exit 1 ;}
+      || { echo -e "$msgERR Die PID-Datei konnte nicht überschrieben werden!\e[0m" >&2 ; f_exit 1 ;}
   fi
 else                           # PID-Datei existiert nicht. Neu anlegen
   echo "$$" > "$PIDFILE" \
-    || { echo -e "$msgERR Die PID-Datei konnte nicht erzeugt werden!\e[0m" ; f_exit 1 ;}
+    || { echo -e "$msgERR Die PID-Datei konnte nicht erzeugt werden!\e[0m" >&2 ; f_exit 1 ;}
 fi
 
 # --- KONFIGURATION LADEN ---
@@ -294,7 +294,7 @@ while getopts ":c:" opt ; do
        if [[ -f "$CONFIG" ]] ; then  # Konfig wurde angegeben und existiert
          source "$CONFIG" ; CONFLOADED='Angegebene' ; break
        else
-         echo -e "$msgERR Die angegebene Konfigurationsdatei fehlt!\e[0m (\"${CONFIG}\")"
+         echo -e "$msgERR Die angegebene Konfigurationsdatei fehlt!\e[0m (\"${CONFIG}\")" >&2
          f_exit 1
        fi
     ;;
@@ -314,7 +314,7 @@ if [[ -z "$CONFLOADED" ]] ; then     # Konfiguration wurde noch nicht geladen
     fi
   done
   if [[ -z "$CONFLOADED" ]] ; then  # Konfiguration wurde nicht gefunden
-    echo -e "$msgERR Keine Konfigurationsdatei gefunden!\e[0m (\"${CONFIG_DIRS[*]}\")"
+    echo -e "$msgERR Keine Konfigurationsdatei gefunden!\e[0m (\"${CONFIG_DIRS[*]}\")" >&2
     f_help
   fi
 fi
@@ -366,11 +366,11 @@ while getopts "$optspec" opt ; do
     -) case "$OPTARG" in            # Lange Option (--) # TEST
          del-old-source)            # Parameter nach Leerzeichen
            DEL_OLD_SOURCE="${!OPTIND}"; ((OPTIND++))
-           #echo "Option: --${OPTARG}, Wert: ${DEL_OLD_SOURCE}" >&2;
+           # echo "Option: --${OPTARG}, Wert: ${DEL_OLD_SOURCE}" >&2;
          ;;
          del-old-source=*)          # Parameter nach "="
            val="${OPTARG#*=}" ; DEL_OLD_SOURCE="${OPTARG%=$val}"
-           #echo "Option: --${opt}, Wert: ${DEL_OLD_SOURCE}" >&2
+           # echo "Option: --${opt}, Wert: ${DEL_OLD_SOURCE}" >&2
          ;;
          *) if [[ "$OPTERR" = 1 ]] ; then
               echo -e "$msgERR Unbekannte Option: --${OPTARG}\e[0m\n" >&2
@@ -392,20 +392,20 @@ if [[ -z "${P[*]}" ]] ; then
     P=("${arg[@]}")  # Profil zuweisen
     msgAUTO='(auto)'  # Text zur Anzeige
   else
-    echo -e "$msgERR Es wurde kein Profil angegeben!\e[0m\n" ; f_help
+    echo -e "$msgERR Es wurde kein Profil angegeben!\e[0m\n" >&2 ; f_help
   fi
 fi
 
 # Prüfen ob alle Profile eindeutige Buchstaben haben (arg[$nr])
 for parameter in "${arg[@]}" ; do
   [[ -z "${_arg[$parameter]+_}" ]] && { _arg[$parameter]=1 ;} \
-    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" ; f_exit ;}
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit ;}
 done
 
 # Prüfen ob alle Profile eindeutige Sicherungsziele verwenden (target[$nr])
 for parameter in "${target[@]}" ; do
   [[ -z "${_target[$parameter]+_}" ]] && { _target[$parameter]=1 ;} \
-    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => target[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" ; f_exit ;}
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => target[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit ;}
 done
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
@@ -417,7 +417,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   f_settings
 
   # Wurden der Option -p gültige Argument zugewiesen?
-  [[ "$PROFIL" != "$ARG" && "$PROFIL" != "customBak" ]] && { echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" ; f_help ;}
+  [[ "$PROFIL" != "$ARG" && "$PROFIL" != "customBak" ]] && { echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" >&2 ; f_help ;}
 
   # Konfiguration zu allen gewählten Profilen anzeigen
   # echo -e "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} \e[0m"
@@ -446,7 +446,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
       [NM]) if [[ $DEL_OLD_BACKUP =~ ^[0-9]+$ ]] ; then  # Prüfen, ob eine Zahl angegeben wurde
               echo -e "\e[103m \e[0m Gelöschte Dateien:\e[1m\tLÖSCHEN wenn älter als $DEL_OLD_BACKUP Tage\e[0m"
             else
-              echo -e "$msgERR Keine gültige Zahl!\e[0m (-d $DEL_OLD_BACKUP)" ; f_exit 1
+              echo -e "$msgERR Keine gültige Zahl!\e[0m (-d $DEL_OLD_BACKUP)" >&2 ; f_exit 1
             fi
          ;;
          S) echo -e "\e[103m \e[0m Löschen von alten Dateien wird im Snapshot-Modus \e[1mnicht\e[0m unterstützt (-d $DEL_OLD_BACKUP)\e[0m" ;;
@@ -457,7 +457,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
       [NM]) if [[ $DEL_OLD_SOURCE =~ ^[0-9]+$ ]] ; then  # Prüfen, ob eine Zahl angegeben wurde
               echo -e "\e[103m \e[0m \e[93mQuelldateien:\e[0m\e[1m\t\tLÖSCHEN wenn älter als $DEL_OLD_SOURCE Tage\e[0m"
             else
-              echo -e "$msgERR Keine gültige Zahl!\e[0m (--del-old-source $DEL_OLD_SOURCE)" ; f_exit 1
+              echo -e "$msgERR Keine gültige Zahl!\e[0m (--del-old-source $DEL_OLD_SOURCE)" >&2 ; f_exit 1
             fi
          ;;
          S) echo -e "\e[103m \e[0m Löschen von Quelldateien wird im Snapshot-Modus \e[1mnicht\e[0m unterstützt (--del-old-source)\e[0m" ;;
@@ -477,7 +477,7 @@ for prog in "${NEEDPROGS[@]}" ; do
   type "$prog" &>/dev/null || MISSING+=("$prog")
 done
 if [[ -n "${MISSING[*]}" ]] ; then  # Fehlende Programme anzeigen
-  echo "Sie benötigen \"${MISSING[*]}\" zur Ausführung dieses Skriptes!"
+  echo "Sie benötigen \"${MISSING[*]}\" zur Ausführung dieses Skriptes!" >&2
   f_exit 1
 fi
 
@@ -499,7 +499,7 @@ for PROFIL in "${P[@]}" ; do
     if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep "$MOUNT" /proc/mounts) ]] ; then
       echo -e -n "Versuche Sicherungsziel (${MOUNT}) einzuhängen..."
       mount "$MOUNT" &>/dev/null \
-        || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" ; f_exit 1 ;}
+        || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" >&2 ; f_exit 1 ;}
       echo -e "OK.\nDas Sicherungsziel (\"${MOUNT}\") wurde erfolgreich eingehängt."
       UNMOUNT+=("$MOUNT")  # Nach Sicherung wieder aushängen (Einhängepunkt merken)
     fi
@@ -508,7 +508,7 @@ for PROFIL in "${P[@]}" ; do
       echo -e -n "Versuche FTP-Quelle (${FTPSRC}) unter \"${FTPMNT}\" einzuhängen..."
       curlftpfs "$FTPSRC" "$FTPMNT" &>/dev/null    # FTP einhängen
       grep -q "$FTPMNT" /proc/mounts \
-        || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" ; f_exit 1 ;}
+        || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" >&2 ; f_exit 1 ;}
       echo -e "OK.\nDie FTP-Quelle (${FTPSRC}) wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
       UNMOUNTFTP=1  # Nach Sicherung wieder aushängen
     fi
@@ -602,7 +602,7 @@ for PROFIL in "${P[@]}" ; do
 
       if [[ -z "$NOT_CHANGED" ]] ; then  # Keine Sicherung nötig?
         f_countdown_wait                 # Countdown vor dem Start anzeigen
-        #   Sicherung mit rsync starten
+        # Sicherung mit rsync starten
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBAKDIR" >> "$LOG"
         echo '-> Starte Sicherung (rsync)...'
@@ -752,7 +752,7 @@ for PROFIL in "${P[@]}" ; do
       fi  # SKIP_FULL
     ;;
     *) # Üngültiger Modus
-      echo -e "$msgERR Unbekannter Sicherungsmodus!\e[0m (\"${MODE}\")"
+      echo -e "$msgERR Unbekannter Sicherungsmodus!\e[0m (\"${MODE}\")" >&2
       f_exit 1
     ;;
   esac
@@ -888,10 +888,13 @@ if [[ -n "$MAILADRESS" ]] ; then
       ;;
       send[Ee]mail)  # Variante mit "sendEmail". Keine " für die Variable $USETLS verwenden!
         sendEmail -f "$MAILSENDER" -t "$MAILADRESS" -u "$SUBJECT" -o message-file="$MAILFILE" -a "$TMP_ARCHIV" \
-          -o message-charset=utf-8 -s "${MAILSERVER}:${MAILPORT}" -xu "$MAILUSER" -xp "$MAILPASS" $USETLS
+                  -o message-charset=utf-8 -s "${MAILSERVER}:${MAILPORT}" -xu "$MAILUSER" -xp "$MAILPASS" $USETLS
       ;;
       e[Mm]ail)  # Sende Mail mit eMail (https://github.com/deanproxy/eMail)
         email -s "$SUBJECT" -attach "$TMP_ARCHIV" "$MAILADRESS" < "$MAILFILE"  # Die auführbare Datei ist 'email'
+      ;;
+      mail)  # Sende Mail mit mail
+        mail -s "$SUBJECT" -t "$MAILADRESS" -a "${ARCHIV}" < "$MAILFILE"
       ;;
       *) echo -e "\nUnbekanntes Mailprogramm: \"${MAILPROG}\"" ;;
     esac
@@ -937,5 +940,4 @@ else
   echo -e '\n' ; "$NOTIFY" "Sicherung(en) abgeschlossen."
 fi
 
-# Aufräumen und beenden
-f_exit
+f_exit  # Aufräumen und beenden
