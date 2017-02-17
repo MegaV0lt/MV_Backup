@@ -894,7 +894,7 @@ if [[ -n "$MAILADRESS" ]] ; then
         email -s "$SUBJECT" -attach "$TMP_ARCHIV" "$MAILADRESS" < "$MAILFILE"  # Die auführbare Datei ist 'email'
       ;;
       mail)  # Sende Mail mit mail
-        mail -s "$SUBJECT" -t "$MAILADRESS" -a "${ARCHIV}" < "$MAILFILE"
+        mail -s "$SUBJECT" -a "${ARCHIV}" "$MAILADRESS" < "$MAILFILE"
       ;;
       *) echo -e "\nUnbekanntes Mailprogramm: \"${MAILPROG}\"" ;;
     esac
