@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170217
+VERSION=170218
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -470,8 +470,9 @@ NEEDPROGS=(mktemp rsync "$NOTIFY" "$WALL")
 [[ -n "$DEL_OLD_BACKUP" ]] && NEEDPROGS+=(find)
 [[ -n "$FTPSRC" ]] && NEEDPROGS+=(curlftpfs)
 if [[ -n "$MAILADRESS" ]] ; then
-  NEEDPROGS+=("$MAILPROG" tar)
+  [[ "${MAILPROG,,}" == "custommail" ]] && { NEEDPROGS+=("${CUSTOM_MAIL[0]}") ;} || NEEDPROGS+=("$MAILPROG")
   [[ "$MAILPROG" == "sendmail" ]] && NEEDPROGS+=(uuencode)
+  NEEDPROGS+=(tar)
 fi
 for prog in "${NEEDPROGS[@]}" ; do
   type "$prog" &>/dev/null || MISSING+=("$prog")
@@ -876,7 +877,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   if [[ ${#ERRLOGS[@]} -ge 1 && "$MAILONLYERRORS" == "true" || "$MAILONLYERRORS" != "true" ]] ; then
     # eMail versenden
     echo "Sende eMail an ${MAILADRESS}..."
-    case $MAILPROG in
+    case "$MAILPROG" in
       mpack)  # Sende Mail mit mpack via ssmtp
         mpack -s "$SUBJECT" -d "$MAILFILE" "$TMP_ARCHIV" "$MAILADRESS"  # Kann "root" sein, wenn in sSMTP konfiguriert
       ;;
@@ -884,17 +885,22 @@ if [[ -n "$MAILADRESS" ]] ; then
         mail_to_send="${TMPDIR}/~mail_to_send"
         { echo "Subject: $SUBJECT" ; cat "$MAILFILE" ; uuencode "$TMP_ARCHIV" "$ARCHIV" ;} > "$mail_to_send"
         sendmail "$MAILADRESS" < "$mail_to_send"
-        rm "$mail_to_send"
       ;;
       send[Ee]mail)  # Variante mit "sendEmail". Keine " für die Variable $USETLS verwenden!
         sendEmail -f "$MAILSENDER" -t "$MAILADRESS" -u "$SUBJECT" -o message-file="$MAILFILE" -a "$TMP_ARCHIV" \
-                  -o message-charset=utf-8 -s "${MAILSERVER}:${MAILPORT}" -xu "$MAILUSER" -xp "$MAILPASS" $USETLS
+          -o message-charset=utf-8 -s "${MAILSERVER}:${MAILPORT}" -xu "$MAILUSER" -xp "$MAILPASS" $USETLS
       ;;
       e[Mm]ail)  # Sende Mail mit eMail (https://github.com/deanproxy/eMail)
         email -s "$SUBJECT" -attach "$TMP_ARCHIV" "$MAILADRESS" < "$MAILFILE"  # Die auführbare Datei ist 'email'
       ;;
-      mail)  # Sende Mail mit mail
-        mail -s "$SUBJECT" -a "${ARCHIV}" "$MAILADRESS" < "$MAILFILE"
+      mail)  # Sende Mail mit mail (http://j.mp/2kZlJdk)
+        mail -s "$SUBJECT" -a "$ARCHIV" "$MAILADRESS" < "$MAILFILE"
+      ;;
+      custom[Mm]ail)  # Eigenes Mailprogramm verwenden. Siehe auch *.conf -> CUSTOM_MAIL
+        for var in MAILADRESS SUBJECT MAILFILE ARCHIV ; do
+          CUSTOM_MAIL=("${CUSTOM_MAIL[@]/$var/${!var}}")  # Platzhalter ersetzen
+        done
+        eval "${CUSTOM_MAIL[@]}"  # Gesamte Zeile ausführen
       ;;
       *) echo -e "\nUnbekanntes Mailprogramm: \"${MAILPROG}\"" ;;
     esac

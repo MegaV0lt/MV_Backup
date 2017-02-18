@@ -89,3 +89,8 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
        falls nicht per Parameter -p oder -a angegeben
 04.12.2016
  Neu:  Prüfung auf eindeutige Sicherungsziele.
+17.02.2017
+ Neu:  eMail-Versand mit mail (http://j.mp/2kZlJdk)
+18.02.2017
+ Neu:  Eigenes eMail-Programm kann nun defiuniert werden. Daz muss die komplette Befehls-
+       zeile angegeben werden. Platzhalter für Betreff usw. sind definiert. Siene *.conf

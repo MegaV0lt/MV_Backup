@@ -45,8 +45,15 @@ MFS_TIMEOUT="300"  # Zeit in Sekunden
 
 # Mailer, der verwendet werden soll. Mögliche Optionen sind:
 # mpack (In Verbindung mit ssmtp), sendmail, sendEmail (http://j.mp/Xo69II),
-# mail oder email (http://j.mp/1LwMBut)
-MAILPROG="mpack"   # mpack, sendmail, sendEmail, mail oder email
+# mail oder email (http://j.mp/1LwMBut).
+Spezialfall: Eigenes Mail-Programm (customMail) siehea auch CUSTOM_MAIL
+MAILPROG="mpack"   # mpack, sendmail, sendEmail, mail, email oder customMail
+
+# Eigenes Mailprogramm inkl. kompletter Befehlszeile. Die Platzhalter MAILADRESS (Empfänger),
+SUBJECT (Betreff), MAILFILE (Text der eMail) und ARCHIV (Logs) werden im Skript durch
+die entsprechenden Werte ersetzt. Umleitungszeichen (<>) in ' setzen.
+Beispiel: CUSTOM_MAIL=(mymail -s SUBJECT -a ARCHIV MAILADRESS '<' MAILFILE)
+CUSTOM_MAIL=()
 
 # eMail-Empfänger (My@mail.de)
 # Nur ausfüllen, wenn man kein -e ... verwenden will (z.B. für crontab)
