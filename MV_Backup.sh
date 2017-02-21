@@ -51,6 +51,7 @@ f_exit() {                             # Beenden und aufräumen $1 = ExitCode
     [[ -n "$POST_ACTION" ]] && echo "Achtung: POST_ACTION (Profil ${TITLE}) wird nicht ausgeführt!"
     [[ -n "$MAILADRESS" ]] && echo 'Achtung: Es erfolgt kein eMail-Versand!'
   fi
+  [[ "$EXIT" -ge 1 ]] && { set -o posix ; set ;} > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
   [[ -n "${exfrom[*]}" ]] && rm "${exfrom[*]}" 2>/dev/null
   [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR"  # Ordner für temporäre Dateien
   [[ "$EXIT" -ne 4 ]] && rm --force "$PIDFILE" 2>/dev/null  # PID-Datei entfernen
@@ -399,13 +400,13 @@ fi
 # Prüfen ob alle Profile eindeutige Buchstaben haben (arg[$nr])
 for parameter in "${arg[@]}" ; do
   [[ -z "${_arg[$parameter]+_}" ]] && { _arg[$parameter]=1 ;} \
-    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit ;}
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit 1 ;}
 done
 
 # Prüfen ob alle Profile eindeutige Sicherungsziele verwenden (target[$nr])
 for parameter in "${target[@]}" ; do
   [[ -z "${_target[$parameter]+_}" ]] && { _target[$parameter]=1 ;} \
-    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => target[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit ;}
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => target[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit 1 ;}
 done
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
