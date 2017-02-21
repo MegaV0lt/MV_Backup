@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170218
+VERSION=170221
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -32,7 +32,7 @@ fi
               # Normalerweise sollte _DEBUG auskommentiert sein (#_DEBUG="on")
 SELF="$(readlink /proc/$$/fd/255)" || SELF="$0"  # Eigener Pfad (besseres $0)
 SELF_NAME="${SELF##*/}"                          # skript.sh
-TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")  # Ordner für temporäre Dateien
+TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")"  # Ordner für temporäre Dateien
 declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Array's
 declare -A _arg _target JOBS  # Array JOBS wird für den Multi rsync-Modus benötigt
 msgERR='\e[1;41m FEHLER! \e[0;1m'  # Anzeige "FEHLER!"
@@ -71,10 +71,10 @@ f_mfs_kill() {
   fi
 }
 
-f_remove_slash() {                     # "/" am Ende entfernen
-  local tmp="$1"
+f_remove_slash() {  # "/" am Ende entfernen. $1=Variablenname ohne $
+  local __retval="$1" tmp="${!1}"  # $1=NAME, ${!1}=Inhalt
   [[ ${#tmp} -ge 2 && "${tmp: -1}" == "/" ]] && tmp="${tmp%/}"
-  echo "$tmp"
+  eval "$__retval='$tmp'"  # Ergebis in Variable aus $1
 }
 
 # Wird in der Konsole angezeigt, wenn eine Option nicht angegeben oder definiert wurde
@@ -349,11 +349,11 @@ while getopts "$optspec" opt ; do
       done
       for i in "$@" ; do            # Alle übergebenen Verzeichnisse außer $TARGET als Quelle
         if [[ -d "$i" && "$i" != "$TARGET" ]] ; then
-          i="$(f_remove_slash "$i")"  # "/" am Ende entfernen
-          MAN_SOURCE+=("$i")          # Verzeichnis anhängen
+          f_remove_slash i          # "/" am Ende entfernen
+          MAN_SOURCE+=("$i")        # Verzeichnis anhängen
         fi
       done
-      TARGET="$(f_remove_slash "$TARGET")"  # "/" am Ende entfernen
+      f_remove_slash TARGET         # "/" am Ende entfernen
       P='customBak' ; TITLE='Benutzerdefinierte Sicherung'
       LOG="${TARGET}/${TITLE}_log.txt"
       MOUNT='' ; MODE='N' ; MODE_TXT='Benutzerdefiniert'
@@ -493,8 +493,7 @@ for PROFIL in "${P[@]}" ; do
 
   if [[ "$PROFIL" != "customBak" ]] ; then  # Nicht bei benutzerdefinierter Sicherung
     # "/" am Ende entfernen
-    SOURCE="$(f_remove_slash "$SOURCE")" ; TARGET="$(f_remove_slash "$TARGET")"
-    BAK_DIR="$(f_remove_slash "$BAK_DIR")"
+    f_remove_slash SOURCE ; f_remove_slash TARGET ; f_remove_slash BAK_DIR
 
     # Festplatte (Ziel) eingebunden?  //TODO: Bessere Methode für grep finden
     if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep "$MOUNT" /proc/mounts) ]] ; then
@@ -667,7 +666,7 @@ for PROFIL in "${P[@]}" ; do
               [[ "${MAPFILE[$i]}" == "$subfolder" || "${MAPFILE[$i]}" == "${subfolder}/" ]] && continue 2
               if [[ "${MAPFILE[$i]:0:1}" == "/" ]] ; then  # Beginnt mit "/"
                 ONTOP=${MAPFILE[$i]:1}  # Ohne führenden "/"
-                if [[ "$(f_remove_slash "$ONTOP")" == "$subfolder" ]] ; then
+                if [[ "$ONTOP" == "$subfolder" || "$ONTOP" == "${subfolder}/" ]] ; then
                   continue 2  # Ordner auslassen, wenn "/foo" oder "/foo/"
                 else  # "/foo/bar"
                   exdir="${ONTOP%%/*}"  # ; echo "ONTOP aber mit Unterordner: /$ONTOP"
