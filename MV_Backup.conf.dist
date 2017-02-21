@@ -50,9 +50,9 @@ Spezialfall: Eigenes Mail-Programm (customMail) siehea auch CUSTOM_MAIL
 MAILPROG="mpack"   # mpack, sendmail, sendEmail, mail, email oder customMail
 
 # Eigenes Mailprogramm inkl. kompletter Befehlszeile. Die Platzhalter MAILADRESS (Empfänger),
-SUBJECT (Betreff), MAILFILE (Text der eMail) und ARCHIV (Logs) werden im Skript durch
-die entsprechenden Werte ersetzt. Umleitungszeichen (<>) in ' setzen.
-Beispiel: CUSTOM_MAIL=(mymail -s SUBJECT -a ARCHIV MAILADRESS '<' MAILFILE)
+# SUBJECT (Betreff), MAILFILE (Text der eMail) und ARCHIV (Logs) werden im Skript durch
+# die entsprechenden Werte ersetzt. Umleitungszeichen (<>) in ' setzen.
+# Beispiel: CUSTOM_MAIL=(mymail -s SUBJECT -a ARCHIV MAILADRESS '<' MAILFILE)
 CUSTOM_MAIL=()
 
 # eMail-Empfänger (My@mail.de)
