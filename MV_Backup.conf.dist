@@ -2,8 +2,7 @@
 #
 # Alle Anpassungen zum Skript, kann man hier und im Skript am Anfang der Datei nachlesen.
 # Wer sich erkenntlich zeigen möchte, kann mir gerne einen kleinen Betrag zukommen lassen:
-# => http://paypal.me/SteBlo
-# Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
+# => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
 #
 ############################### ALLGEMEINE KONFIGURATION ################################
 
@@ -65,25 +64,16 @@ MAILADRESS=""
 #MAILONLYERRORS="true"
 
 ### Einstellungen für den eMail-Bericht ###
-# Zeige verwendetes Betriebssysten (/etc/os-release)
-SHOWOS="true"
-
-# Zeige die verwendeten Optionen beim Skriptaufruf (-p a -e My@mail.de ...)
-SHOWOPTIONS="true"
-
-# Zeige die Belegung des Sicherungsziels (df -Ph)
-SHOWUSAGE="true"
-
-# Zeige Inhalt der Sichrungsziele (Oberste Ebene ls -lh und du -h)
-SHOWCONTENT="true"
-
-# Zeige Profile mit Fehlern (rsync Fehlercode)
-SHOWERRORS="true"
+SHOWOS="true"       # Zeige verwendetes Betriebssysten (/etc/os-release)
+SHOWOPTIONS="true"  # Zeige die verwendeten Optionen beim Skriptaufruf
+SHOWUSAGE="true"    # Zeige die Belegung des Sicherungsziels (df -Ph)
+SHOWCONTENT="true"  # Zeige Inhalt der Sichrungsziele (Oberste Ebene)
+SHOWERRORS="true"   # Zeige Profile mit Fehlern (rsync Fehlercode)
 
 # Max. Größe des gepackten Logarchivs in Byte, das per Mail gesendet wird.
 # Bei MAXLOGSIZE=0 wird kein Archiv angehängt. Betrifft nur das Archiv!
-MAXLOGSIZE=$((1024*1024))     # 1 MB (Vorgabe)
 #MAXLOGSIZE=$((5*1024*1024))  # Beispiel 5 MB
+MAXLOGSIZE=$((1024*1024))     # 1 MB (Vorgabe)
 
 # Ausfüllen, wenn "sendEmail" verwendert wird (Diese Parameter werden von sendEmail benötigt)
 MAILSERVER=""        # Server (z.B. mail.gmx.net)
@@ -105,13 +95,10 @@ POST_ACTION=""
 
 ############################### KONFIGURATION DER PROFILE ###############################
 
-# Nummer des Profils. (Fortlaufend mit 1 beginnend und wird automatisch gesetzt)
-#nr=1 oder ((nr++)) ab dem 2. Profil
-
 # Bezeichnung des Profils; wird u.a. in der Hilfe angezeigt
 #title[$nr]="Meine Sicherung"
 
-# Parameter, mit dem das jeweilige Profil gestartet wird (-p arg[$nr])
+# Parameter, mit dem das jeweilige Profil gestartet wird (-p m)
 #arg[$nr]="m"
 
 # [optional] Modus für die Sicherung. Parameter "Snapshot" verwenden um Snapshots zu erstellen
