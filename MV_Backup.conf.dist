@@ -15,7 +15,7 @@ RSYNC_OPT_SNAPSHOT=("-av")           # Parameter für Modus Snapshot
 # [optional] Einhängepunkt der externen Festplatte
 # Vor der Sicherung wird geprüft, ob die externe Festplatte eingebunden ist
 # Geeignet, wenn alle Profile das Sicherungsziel im selben Einhängepunkt haben
-# ACHTUNG: Bei verschiedenen Sicherungszielnen den Parameter mount[$nr] in
+# ACHTUNG: Bei verschiedenen Sicherungszielnen den Parameter mount[nr] in
 # der Profilkonfiguration verwenden
 #MOUNT="/mnt/usbdisk"                # Einhängepunkt des Sicherungsziels (Beispiel)
 #MOUNT="$(readlink -m /mnt/usbdisk)" # Falls Einhängepunkt ein Symlink ist
@@ -45,7 +45,7 @@ MFS_TIMEOUT="300"  # Zeit in Sekunden
 # Mailer, der verwendet werden soll. Mögliche Optionen sind:
 # mpack (In Verbindung mit ssmtp), sendmail, sendEmail (http://j.mp/Xo69II),
 # mail oder email (http://j.mp/1LwMBut).
-# Spezialfall: Eigenes Mail-Programm (customMail) siehea auch CUSTOM_MAIL
+# Spezialfall: Eigenes Mail-Programm (customMail) siehe auch CUSTOM_MAIL
 MAILPROG="mpack"   # mpack, sendmail, sendEmail, mail, email oder customMail
 
 # Eigenes Mailprogramm inkl. kompletter Befehlszeile. Die Platzhalter MAILADRESS (Empfänger),
@@ -60,8 +60,7 @@ CUSTOM_MAIL=()
 MAILADRESS=""
 
 # eMail nur bei Fehler versenden. Kann mit -f über die Befehlszeile angewendet werden
-# Kommentarzeichen (#) entfernen zum aktivieren
-#MAILONLYERRORS="true"
+#MAILONLYERRORS="true"  # Kommentarzeichen (#) entfernen zum aktivieren
 
 ### Einstellungen für den eMail-Bericht ###
 SHOWOS="true"       # Zeige verwendetes Betriebssysten (/etc/os-release)
@@ -86,82 +85,83 @@ MAILSENDER=""        # Sendeadresse (z.B. My@mail.de)
 ############################### PRE- UND POST KONFIGURATION #############################
 
 # PRE_ACTION wird vor dem Sichern ausgeführt. Anführungszeichen müssen Maskiert (\")
-# werden. Beispiel: PRE_ACTION="echo \"PRE_ACTION startet hier!\""
+# werden. Beispiel: PRE_ACTION="echo \"PRE_ACTION\" startet hier!"
 PRE_ACTION=""
 
 # POST_ACTION wird nach dem Sichern ausgeführt. Anführungszeichen müssen Maskiert (\")
 # werden
 POST_ACTION=""
 
-############################### KONFIGURATION DER PROFILE ###############################
+########################### KONFIGURATION DER PROFILE (HILFE) ###########################
+#####   =>  Änderungen erst weiter unten ab "= = = Profil 1 = = =" vornehmen!  <=   #####
 
 # Bezeichnung des Profils; wird u.a. in der Hilfe angezeigt
-#title[$nr]="Meine Sicherung"
+#title[nr]="Meine Sicherung"
 
 # Parameter, mit dem das jeweilige Profil gestartet wird (-p m)
-#arg[$nr]="m"
+#arg[nr]="m"
 
 # [optional] Modus für die Sicherung. Parameter "Snapshot" verwenden um Snapshots zu erstellen
 # Z.B. "Snapshot", "snapshot" oder "snap" für den Snapshot-Modus
 # Z.B. "Multi", "multi" oder "m" für den experimentellem Multi rsync-Modus
 # "", "default" oder "Normal" für den Normal-Modus
-#mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
+#mode[nr]=""             # Modus (Normal, Snapshot oder Multi)
 
 # [optional] Eigener Einhängepunkt
-# ACHTUNG: Bei target[$nr] kein $MOUNT angeben. Entweder vollen Pfad verwenden
-#   oder die Varaible mount[$nr] oder "${mount[$nr]:-$MOUNT}" verwenden
-#mount[$nr]=""             # Eigener Einhängepunkt
+# ACHTUNG: Bei target[nr] kein $MOUNT angeben. Entweder vollen Pfad verwenden
+#   oder die Varaible mount[nr] oder "${mount[nr]:-$MOUNT}" verwenden
+#mount[nr]=""             # Eigener Einhängepunkt
 
 # [optional] Quellverzeichnis auf FTP-Server (curlftpfs wird benötigt)
 # WICHTIG: Login-Daten mit angeben (user:password@ftp.server)
-# ACHTUNG: Wenn angegeben, dann ist ftpmnt[$nr] der Einhängepunkt für den FTP
-#ftpsrc[$nr]="ftp://myusername:mypassword@ftp.mydomain.com"  # Quelle ist ein FTP
+# ACHTUNG: Wenn angegeben, dann ist ftpmnt[nr] der Einhängepunkt für den FTP
+#ftpsrc[nr]="ftp://myusername:mypassword@ftp.mydomain.com"  # Quelle ist ein FTP
 
-# [optional] Wenn ftpsrc[$nr] verwendet wird, ist ftpmnt[$nr] der Einhängepunkt
-#ftpmnt[$nr]="/mnt/remote_ftp"  # Einhängepunkt für die FTP-Quelle
+# [optional] Wenn ftpsrc[nr] verwendet wird, ist ftpmnt[nr] der Einhängepunkt
+#ftpmnt[nr]="/mnt/remote_ftp"  # Einhängepunkt für die FTP-Quelle
 
 # Quellverzeichnis(se)
 # WICHTIG: Pfadangaben, die Leerzeichen enthalten, müssen von \" umschlossen werden!
 #   Z.B. \"/Verzeichnis mit Leerzeichen/\"
-# Wenn ftpsrc[$nr] verwendet wird, kann man ftpmnt[$nr] im Pfad mit angeben.
-# source[$nr] muss dazu nach ftpmnt[$nr] konfiguriert sein!
-#source[$nr]="${ftpmnt[$nr]}/html/include"  # FTP-Quelle
-#source[$nr]="/var/log"  # Lokale Quelle
+# Wenn ftpsrc[nr] verwendet wird, kann man ftpmnt[nr] im Pfad mit angeben.
+# source[nr] muss dazu nach ftpmnt[nr] konfiguriert sein!
+#source[nr]="${ftpmnt[nr]}/html/include"  # FTP-Quelle
+#source[nr]="/var/log"  # Lokale Quelle
 
-# Zielverzeichnis. Mit "${mount[$nr]:-$MOUNT}" wird $MOUNT verwendet, wenn
-# ${mount[$nr]} leer ist
-#target[$nr]="${mount[$nr]:-$MOUNT}/_Backup/VDR/Data"
+# Zielverzeichnis. Mit "${mount[nr]:-$MOUNT}" wird $MOUNT verwendet, wenn
+# ${mount[nr]} leer ist
+#target[nr]="${mount[nr]:-$MOUNT}/_Backup/VDR/Data"
 
 # [optional] Wert in MegaByte. Freier Platz, der auf dem Ziel mindestens frei
 # sein muss. Bei Unterschreitung wird eine Warnung angezeigt und in das Fehlerlog
 # geschrieben. Das Backup wird NICHT angehalten! (Nur im Modus normal und multi)
-#minfree[$nr]="100"  # In MegaByte (1024 KB) # 1024 = 1 GB
+#minfree[nr]="100"  # In MegaByte (1024 KB) # 1024 = 1 GB
 
 # [optional] Wenn gesetzt, dann wird bei ungenügend freiem Speicher das Profil
 # nicht gestartet und ein Logeintrag im Fehlerlog erstellt (Nur im Modus normal/multi)
-#skip_full[$nr]="1"  # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
+#skip_full[nr]="1"  # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
 
 # [optional] Wenn gesetzt, wird vor dem Backup mit einem Testlauf (Dry-Run) geprüft,
-# ob noch genug Platz auf dem Ziel vorhanden ist (Langsam). Überschreibt minfree[$nr].
-# Kann mit skip_full[$nr] verwendet werden (Nur im Modus normal und multi)
-#dry_run[$nr]="1"  # Wenn gesetzt wird ein Testlauf durchgeführt
+# ob noch genug Platz auf dem Ziel vorhanden ist (Langsam). Überschreibt minfree[nr].
+# Kann mit skip_full[nr] verwendet werden (Nur im Modus normal und multi)
+#dry_run[nr]="1"  # Wenn gesetzt wird ein Testlauf durchgeführt
 
 # [optional] Wert in MegaByte. Freier Platz, der auf dem Ziel mindestens frei
 # sein muss. Bei Unterschreitung wird eine Warnung angezeigt und in das Fehlerlog
-# geschrieben. Das Backup wird abgebrochen! Darf nicht mit minfree[$nr] verwendet
+# geschrieben. Das Backup wird abgebrochen! Darf nicht mit minfree[nr] verwendet
 # werden (Nur im Modus normal und multi)
-#minfree_bg[$nr]="100"  # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
+#minfree_bg[nr]="100"  # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
 
 # [optional] Logdatei, in der die Ausgabe von rsync gespeichert wird
 # Nützlich kann "$(date +%F)" sein, um separate Logs zu erhalten
-#log[$nr]="${target[$nr]}/$(date +%F)_${title[$nr]}.log"
+#log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
 
 # Temporäre Datei (Standard: $(mktemp -t "tmp.rsync.XXXX")); muss nicht geändert werden
 # "${TMPDIR:-/tmp}" TMPDIR wird im Skript gesetzt, falls Leer, dann /tmp
-#exfrom[$nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
+#exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
 
 # [optional] Optionen für rsync, wenn nicht die Optionen aus $RSYNC_OPT (s.o.) verwendet werden sollen
-#rsync_opt[$nr]=""
+#rsync_opt[nr]=""
 
 # Dateien und Verzeichnisse, die von der Sicherung ausgeschlossen werden sollen
 # Pro Zeile 1 Pfad; Pfadangaben mit Leerzeichen müssen nicht gesondert behandelt werden
@@ -171,33 +171,30 @@ POST_ACTION=""
 #   /tmp/*              behält /tmp/ aber schließt den Inhalt aus
 #   /var/spool/lpd//cf  schließt Dateien auf, die mit cf beginnen und
 #                       im Ordner /var/spool/lpd sind
-#cat > "${exfrom[$nr]}" <<_EOF_
-#_incoming
+#cat > "${exfrom[nr]}" <<_EOF_
 #lost+found/
-#portage/
 #tmp/
-#video/
 #_EOF_
 
 nr=0  # <- Nicht löschen! Wird für die Nummerierung der Profile beötigt!
 # = = = Profil 1  = = =
-((nr++))                       # Fortlaufende Profil-Nummer
-     title[$nr]="VDR_Root"     # Profilname
-       arg[$nr]="r"            # Argument (-p r)
-      mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
-     mount[$nr]=""             # Eigener Einhängepunkt
-    ftpsrc[$nr]=""             # Quelle ist ein FTP
-    ftpmnt[$nr]=""             # Einhängepunkt für die FTP-Quelle
-    source[$nr]="/"
-    target[$nr]="${mount[$nr]:-$MOUNT}/_Backup/VDR/Root"
-   minfree[$nr]=""             # In MegaByte (1024 KByte)
- skip_full[$nr]=""             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
-   dry_run[$nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
-minfree_bg[$nr]=""             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
-       log[$nr]="${target[$nr]}/$(date +%F)_${title[$nr]}.log"
-    exfrom[$nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
- rsync_opt[$nr]=""
-cat > "${exfrom[$nr]}" <<_EOF_
+((nr+=1))                     # Fortlaufende Profil-Nummer
+     title[nr]="VDR_Root"     # Profilname
+       arg[nr]="r"            # Argument (-p r)
+      mode[nr]=""             # Modus (Normal, Snapshot oder Multi)
+     mount[nr]=""             # Eigener Einhängepunkt
+    ftpsrc[nr]=""             # Quelle ist ein FTP
+    ftpmnt[nr]=""             # Einhängepunkt für die FTP-Quelle
+    source[nr]="/"
+    target[nr]="${mount[nr]:-$MOUNT}/_Backup/VDR/Root"
+   minfree[nr]=""             # In MegaByte (1024 KByte)
+ skip_full[nr]=""             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
+   dry_run[nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
+minfree_bg[nr]=""             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
+       log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
+    exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
+ rsync_opt[nr]=""
+cat > "${exfrom[nr]}" <<_EOF_
 dev/
 lost+found/
 mnt/
@@ -209,51 +206,51 @@ video/
 _EOF_
 
 # = = = Beispiel für ein Profil, dass einen FTP-Server als Quelle hat = = =
-((nr++))                       # Variable nr um eins hochzählen
-     title[$nr]="FTP_Daten"    # Profilname
-       arg[$nr]="f"            # Argument (-p f)
-      mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
-     mount[$nr]=""             # Eigener Einhängepunkt
-    ftpsrc[$nr]="ftp://myusername:mypassword@ftp.mydomain.com"  # Quelle ist ein FTP
-    ftpmnt[$nr]="/mnt/remote_ftp"  # Einhängepunkt für die FTP-Quelle
-    source[$nr]="${ftpmnt[$nr]}/html/includes"
-    target[$nr]="${mount[$nr]:-$MOUNT}/_Backup/Mein_FTP/includes"
-   minfree[$nr]=""             # In MegaByte (1024 KByte)
- skip_full[$nr]=""             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
-   dry_run[$nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
-minfree_bg[$nr]=""             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
-       log[$nr]="${target[$nr]}/$(date +%F)_${title[$nr]}.log"
-    exfrom[$nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
- rsync_opt[$nr]=""
-cat > "${exfrom[$nr]}" <<_EOF_
+((nr+=1))                     # Variable nr um eins hochzählen
+     title[nr]="FTP_Daten"    # Profilname
+       arg[nr]="f"            # Argument (-p f)
+      mode[nr]=""             # Modus (Normal, Snapshot oder Multi)
+     mount[nr]=""             # Eigener Einhängepunkt
+    ftpsrc[nr]="ftp://myusername:mypassword@ftp.mydomain.com"  # Quelle ist ein FTP
+    ftpmnt[nr]="/mnt/remote_ftp"  # Einhängepunkt für die FTP-Quelle
+    source[nr]="${ftpmnt[nr]}/html/includes"
+    target[nr]="${mount[nr]:-$MOUNT}/_Backup/Mein_FTP/includes"
+   minfree[nr]=""             # In MegaByte (1024 KByte)
+ skip_full[nr]=""             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
+   dry_run[nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
+minfree_bg[nr]=""             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
+       log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
+    exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
+ rsync_opt[nr]=""
+cat > "${exfrom[nr]}" <<_EOF_
 logs/
 .cnf
 _EOF_
 
 # = = = Vorlage für neues Profil  = = =
-#((nr++))                    # Variable nr um eins hochzählen
-#  title[$nr]=""             # Profilname
-#    arg[$nr]=""             # Argument (-p)
-#   mode[$nr]=""             # Modus (Normal, Snapshot oder Multi)
-#  mount[$nr]=""             # Eigener Einhängepunkt
-# ftpsrc[$nr]=""             # Quelle ist ein FTP
-# ftpmnt[$nr]=""             # Einhängepunkt für die FTP-Quelle
-# source[$nr]=""
-# target[$nr]=""
-#minfree[$nr]=""             # In MegaByte (1024 KByte)
-#skip_full[$nr]=""           # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
-#dry_run[$nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
-#minfree_bg[$nr]=""          # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
-#    log[$nr]="${target[$nr]}/$(date +%F)_${title[$nr]}.log"
-# exfrom[$nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
-# cat > "${exfrom[$nr]}" <<_EOF_
+#((nr+=1))                  # Variable nr um eins hochzählen
+#  title[nr]=""             # Profilname
+#    arg[nr]=""             # Argument (-p)
+#   mode[nr]=""             # Modus (Normal, Snapshot oder Multi)
+#  mount[nr]=""             # Eigener Einhängepunkt
+# ftpsrc[nr]=""             # Quelle ist ein FTP
+# ftpmnt[nr]=""             # Einhängepunkt für die FTP-Quelle
+# source[nr]=""
+# target[nr]=""
+#minfree[nr]=""             # In MegaByte (1024 KByte)
+#skip_full[nr]=""           # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
+#dry_run[nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
+#minfree_bg[nr]=""          # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
+#    log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
+# exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
+# cat > "${exfrom[nr]}" <<_EOF_
 #
 # _EOF_
 
 ################################ ENDE DER KONFIGURATION #################################
 
 # Info: Wenn das Skript startet, werden die Werte aus den Arrays ausgelesen und in Variablen gespeichert.
-# title[$nr]  ->  $TITLE   | arg[$nr]  ->  $ARG         | mode[$nr]  ->  $MODE
-# source[$nr]  ->  $SOURCE | mount[$nr]  ->  $MOUNT     | ftpsrc[$nr]  ->  $FTPSRC
-# target[$nr]  ->  $TARGET | minfree[$nr]  ->  $MINFREE | dry_run[$nr]  ->  $DRY_RUN
-# log[$nr]  ->  $LOG       | exfrom[$nr]  ->  $EXFROM   | rsync_opt[$nr]  ->  $RSYNC_OPT
+# title[nr]  ->  $TITLE   | arg[nr]  ->  $ARG         | mode[nr]  ->  $MODE
+# source[nr]  ->  $SOURCE | mount[nr]  ->  $MOUNT     | ftpsrc[nr]  ->  $FTPSRC
+# target[nr]  ->  $TARGET | minfree[nr]  ->  $MINFREE | dry_run[nr]  ->  $DRY_RUN
+# log[nr]  ->  $LOG       | exfrom[nr]  ->  $EXFROM   | rsync_opt[nr]  ->  $RSYNC_OPT

@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170221
+VERSION=170222
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -20,8 +20,7 @@ VERSION=170221
 # Sämtliche Einstellungen werden in der *.conf vorgenommen.
 # ---> Bitte ab hier nichts mehr ändern! <---
 if ((BASH_VERSINFO[0] < 4)) ; then  # Test, ob min. Bash Version 4.0
-  echo 'Sorry, dieses Skript benötigt Bash Version 4.0 oder neuer!' >&2
-  exit 1
+  echo 'Sorry, dieses Skript benötigt Bash Version 4.0 oder neuer!' >&2 ; exit 1
 fi
 
 # Skriptausgaben zusätzlich in Datei speichern. (DEBUG)
@@ -39,6 +38,8 @@ msgERR='\e[1;41m FEHLER! \e[0;1m'  # Anzeige "FEHLER!"
 
 # --- FUNKTIONEN ---
 trap 'f_exit 3' SIGHUP SIGINT SIGQUIT SIGABRT  # Bei unerwarteten Ende (Strg-C) aufräumen
+set -o errtrace  # Let shell functions inherit ERR trap.  Same as 'set -E'
+trap 'f_exit 5 "${FUNCNAME[0]:+${FUNCNAME[0]}():} $LINENO"' ERR
 
 DEBUG() {  # Verwenden mit "DEBUG echo $VAR; DEBUG set -x"
   [[ "$_DEBUG" == "on" ]] && { "$@" || : ;}
@@ -56,19 +57,18 @@ f_exit() {                             # Beenden und aufräumen $1 = ExitCode
   [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR"  # Ordner für temporäre Dateien
   [[ "$EXIT" -ne 4 ]] && rm --force "$PIDFILE" 2>/dev/null  # PID-Datei entfernen
   [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden
+  [[ "$EXIT" -eq 5 ]] && echo -e "$msgERR Ungültige Konfiguration! (\"${CONFIG}\") $2"
   exit "$EXIT"
 }
 
-f_mfs_kill() {
-  if [[ -n "$MFS_PID" ]] ; then
-    echo '-> Beende Hintergrundüberwachung...'
-    kill "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
-    if ps --pid "$MFS_PID" &>/dev/null ; then  # Noch aktiv!
-      echo '!> Hintergrundüberwachung konnte nicht beendet werden! Versuche erneut...'
-      kill -9 "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
-    else
-      unset -v 'MFS_PID'
-    fi
+f_mfs_kill() {  # $1 PID der Hintergrundüberwachung
+  echo '-> Beende Hintergrundüberwachung...'
+  kill "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
+  if ps --pid "$MFS_PID" &>/dev/null ; then  # Noch aktiv!
+    echo '!> Hintergrundüberwachung konnte nicht beendet werden! Versuche erneut...'
+    kill -9 "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
+  else
+    unset -v 'MFS_PID'
   fi
 }
 
@@ -167,7 +167,7 @@ f_settings() {
   fi
 }
 
-f_del_old_backup() {   # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
+f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
   echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind..."
   { echo "$(date +"%F %R.%S"): Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind..."
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
@@ -179,7 +179,7 @@ f_del_old_backup() {   # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
   } >> "$LOG"
 }
 
-f_del_old_source() {   # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Quelle $2=Ziel)
+f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Quelle $2=Ziel)
   local file srcdir="$1" targetdir="$2"
   [[ $# -ne 2 ]] && return 1  # Benötigt Quelle und Ziel als Parameter
   cd "$srcdir" || return 1    # Bei Fehler abbruch
@@ -265,6 +265,15 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
   done
 }
 
+f_source_config() {  # Konfiguration laden
+  if [[ -n "$1" ]] ; then
+    # Let shell functions inherit ERR trap.  Same as `set -E'.
+    # set -o errtrace  # Muss vor dem 'trap' sein!
+    source "$1" # || f_exit 5 $?
+    set +o errtrace
+  fi
+}
+
 # --- AUSFÜHRBAR? ---
 if [[ ! -x "$SELF" ]] ; then
   echo -e '\e[30;103m WARNUNG \e[0;1m Das Skript ist nicht ausführbar!\e[0m'
@@ -293,7 +302,7 @@ while getopts ":c:" opt ; do
   case "$opt" in
     c) CONFIG="$OPTARG"
        if [[ -f "$CONFIG" ]] ; then  # Konfig wurde angegeben und existiert
-         source "$CONFIG" ; CONFLOADED='Angegebene' ; break
+         f_source_config "$CONFIG" ; CONFLOADED='Angegebene' ; break
        else
          echo -e "$msgERR Die angegebene Konfigurationsdatei fehlt!\e[0m (\"${CONFIG}\")" >&2
          f_exit 1
@@ -310,7 +319,7 @@ if [[ -z "$CONFLOADED" ]] ; then     # Konfiguration wurde noch nicht geladen
   for dir in "${CONFIG_DIRS[@]}" ; do
     CONFIG="${dir}/${CONFIG_NAME}"
     if [[ -f "$CONFIG" ]] ; then
-      source "$CONFIG" ; CONFLOADED='Gefundene'
+      f_source_config "$CONFIG" ; CONFLOADED='Gefundene'
       break  # Die erste gefundene Konfiguration wird verwendet
     fi
   done
@@ -713,13 +722,12 @@ for PROFIL in "${P[@]}" ; do
             fi
           done < <(find "$R_TARGET" -maxdepth 1 -type f -printf '%P\0')  # %P = Datei ohne führendes "./" und ohne Pfad
 
-          ((cnt++)) ; echo -e -n "-> Starte rsync-Prozess Nr. $cnt für Dateien im Stammordner ["
+          ((cnt++)) ; echo -e -n '-> Starte rsync für Dateien im Stammordner'
           # Dateien über maxdepth Tiefe ebenfalls mit rsync sichern
           echo "find . -maxdepth $depth -type f -print0 | rsync ${RSYNC_OPT[*]} --log-file=${LOG%.log}_$cnt.log --exclude-from=$_EXFROM --backup-dir=$BAK_DIR --files-from=- --from0 ./ ${R_TARGET}/" >> "${LOG%.log}_$cnt.log"
           rsync "${RSYNC_OPT[@]}" --log-file="${LOG%.log}_$cnt.log" --exclude-from="$_EXFROM" \
             --backup-dir="$BAK_DIR" --files-from=<(find . -maxdepth $depth -type f -print0) \
             --from0 ./ "${R_TARGET}/" >/dev/null 2>> "$ERRLOG"
-          echo "$!]"
           RC=$? ; [[ $RC -ne 0 ]] && { RSYNCRC+=("$RC") ; RSYNCPROF+=("${TITLE}_$cnt") ;}  # Profilname und Fehlercode merken
         else
           FINISHEDTEXT='abgebrochen!'
@@ -865,10 +873,6 @@ if [[ -n "$MAILADRESS" ]] ; then
         for dir in ${LOGDIR}/*/ ; do  # Geht nur ohne "
           du --human-readable --summarize "$dir"
         done
-        # du --human-readable --summarize "${LOGDIR}/${FILES_DIR}"
-        # _BAK_DIR="${BAK_DIR##*/}" ; _BAK_DIR="${_BAK_DIR##*/}"  # Letztes Verzeichnis (Geloeschte Dateien/[Datum])
-        # [[ -n "$_BAK_DIR" && -d "${LOGDIR}/${_BAK_DIR}" ]] && \
-        #  du --human-readable --summarize "${LOGDIR}/${_BAK_DIR}"
       } >> "$MAILFILE"
     fi  # SHOWCONTENT
   done
@@ -937,11 +941,11 @@ if [[ -n "$SHUTDOWN" ]] ; then
   # Verschiedene Befehle zum Herunterfahren mit Benutzerrechten [muss evtl. an das eigene System angepasst werden!]
   # Alle Systeme mit HAL || GNOME DBUS || KDE DBUS || GNOME || KDE
   # Root-Rechte i. d. R. erforderlich für "halt" und "shutdown"!
-  dbus-send --print-reply --system --dest=org.freedesktop.Hal /org/freedesktop/Hal/devices/computer org.freedesktop.Hal.Device.SystemPowerManagement.Shutdown || \
-    dbus-send --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.RequestShutdown || \
-    dbus-send --print-reply --dest=org.kde.ksmserver /KSMServer org.kde.KSMServerInterface.logout 0 2 2 || \
-    gnome-power-cmd shutdown || dcop ksmserver ksmserver logout 0 2 2 || \
-    halt || shutdown -h now
+  dbus-send --print-reply --system --dest=org.freedesktop.Hal /org/freedesktop/Hal/devices/computer org.freedesktop.Hal.Device.SystemPowerManagement.Shutdown \
+    || dbus-send --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.RequestShutdown \
+    || dbus-send --print-reply --dest=org.kde.ksmserver /KSMServer org.kde.KSMServerInterface.logout 0 2 2 \
+    || gnome-power-cmd shutdown || dcop ksmserver ksmserver logout 0 2 2 \
+    || halt || shutdown -h now
 else
   echo -e '\n' ; "$NOTIFY" "Sicherung(en) abgeschlossen."
 fi
