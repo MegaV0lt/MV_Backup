@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170222
+VERSION=170225
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -39,7 +39,7 @@ msgERR='\e[1;41m FEHLER! \e[0;1m'  # Anzeige "FEHLER!"
 # --- FUNKTIONEN ---
 trap 'f_exit 3' SIGHUP SIGINT SIGQUIT SIGABRT  # Bei unerwarteten Ende (Strg-C) aufräumen
 set -o errtrace  # Let shell functions inherit ERR trap.  Same as 'set -E'
-trap 'f_exit 5 "${FUNCNAME[0]:+${FUNCNAME[0]}():} $LINENO"' ERR
+#trap 'f_exit 5 "${FUNCNAME[0]:+${FUNCNAME[0]}():} $LINENO"' ERR
 
 DEBUG() {  # Verwenden mit "DEBUG echo $VAR; DEBUG set -x"
   [[ "$_DEBUG" == "on" ]] && { "$@" || : ;}
@@ -269,7 +269,7 @@ f_source_config() {  # Konfiguration laden
   if [[ -n "$1" ]] ; then
     # Let shell functions inherit ERR trap.  Same as `set -E'.
     # set -o errtrace  # Muss vor dem 'trap' sein!
-    source "$1" # || f_exit 5 $?
+    source "$1" || f_exit 5 $?
     set +o errtrace
   fi
 }
