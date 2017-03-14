@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170225
+VERSION=170313
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -38,26 +38,24 @@ msgERR='\e[1;41m FEHLER! \e[0;1m'  # Anzeige "FEHLER!"
 
 # --- FUNKTIONEN ---
 trap 'f_exit 3' SIGHUP SIGINT SIGQUIT SIGABRT  # Bei unerwarteten Ende (Strg-C) aufräumen
-set -o errtrace  # Let shell functions inherit ERR trap.  Same as 'set -E'
-#trap 'f_exit 5 "${FUNCNAME[0]:+${FUNCNAME[0]}():} $LINENO"' ERR
 
 DEBUG() {  # Verwenden mit "DEBUG echo $VAR; DEBUG set -x"
   [[ "$_DEBUG" == "on" ]] && { "$@" || : ;}
 }
 
-f_exit() {                             # Beenden und aufräumen $1 = ExitCode
-  local EXIT="${1:-0}"                 # Wenn leer, dann 0
-  if [[ "$EXIT" -eq 3 ]] ; then        # Strg-C
+f_exit() {  # Beenden und aufräumen $1 = ExitCode
+  local EXIT="${1:-0}"  # Wenn leer, dann 0
+  [[ "$EXIT" -eq 5 ]] && echo -e "$msgERR Ungültige Konfiguration! (\"${CONFIG}\") $2"
+  if [[ "$EXIT" -eq 3 ]] ; then  # Strg-C
     echo -e "\n=> Aufräumen und beenden [$$]"
-    [[ -n "$POST_ACTION" ]] && echo "Achtung: POST_ACTION (Profil ${TITLE}) wird nicht ausgeführt!"
+    [[ -n "$POST_ACTION" ]] && echo 'Achtung: POST_ACTION wird nicht ausgeführt!'
     [[ -n "$MAILADRESS" ]] && echo 'Achtung: Es erfolgt kein eMail-Versand!'
   fi
   [[ "$EXIT" -ge 1 ]] && { set -o posix ; set ;} > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
   [[ -n "${exfrom[*]}" ]] && rm "${exfrom[*]}" 2>/dev/null
   [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR"  # Ordner für temporäre Dateien
-  [[ "$EXIT" -ne 4 ]] && rm --force "$PIDFILE" 2>/dev/null  # PID-Datei entfernen
   [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden
-  [[ "$EXIT" -eq 5 ]] && echo -e "$msgERR Ungültige Konfiguration! (\"${CONFIG}\") $2"
+  [[ "$EXIT" -ne 4 ]] && rm --force "$PIDFILE" 2>/dev/null  # PID-Datei entfernen
   exit "$EXIT"
 }
 
@@ -85,7 +83,7 @@ f_help() {
   echo
   echo -e '\e[37;100m Erforderlich \e[0m'
   for i in "${!arg[@]}" ; do
-    echo -e "  \e[1;34m-p\e[0m \e[1;36m${arg[$i]}\e[0m\tProfil \"${title[$i]}\""
+    echo -e "  \e[1;34m-p\e[0m \e[1;36m${arg[i]}\e[0m\tProfil \"${title[i]}\""
   done
   echo -e ' oder\n  \e[1;34m-a\e[0m\tAlle Sicherungs-Profile'
   echo -e ' oder\n  \e[1;34m-m\e[0m\tVerzeichnisse manuell angeben'
@@ -113,17 +111,17 @@ f_settings() {
   if [[ "$PROFIL" != "customBak" ]] ; then
     # Benötigte Werte aus dem Array (.conf) holen
     for i in "${!arg[@]}" ; do  # Anzahl der vorhandenen Profile ermitteln
-      if [[ "${arg[$i]}" == "$PROFIL" ]] ; then  # Wenn das gewünschte Profil gefunden wurde
+      if [[ "${arg[i]}" == "$PROFIL" ]] ; then  # Wenn das gewünschte Profil gefunden wurde
         # RSYNC_OPT, RSYNC_OPT_SNAPSHOT und MOUNT wieder herstelen
         [[ -n "$_RSYNC_OPT" ]] && { RSYNC_OPT=("${_RSYNC_OPT[@]}") ; unset -v '_RSYNC_OPT' ;}
         [[ -n "$_RSYNC_OPT_SNAPSHOT" ]] && { RSYNC_OPT_SNAPSHOT=("${_RSYNC_OPT_SNAPSHOT[@]}") ; unset -v '_RSYNC_OPT_SNAPSHOT' ;}
         [[ -n "$_MOUNT" ]] && { MOUNT="$_MOUNT" ; unset -v '_MOUNT' ;}
         [[ "$MOUNT" == "0" ]] && unset -v 'MOUNT'  # MOUNT war nicht gesetzt
-        TITLE="${title[$i]}"   ; ARG="${arg[$i]}"       ; MODE="${mode[$i]}"
-        SOURCE="${source[$i]}" ; FTPSRC="${ftpsrc[$i]}" ; FTPMNT="${ftpmnt[$i]}"
-        TARGET="${target[$i]}" ; LOG="${log[$i]}"       ; EXFROM="${exfrom[$i]}"
-        MINFREE="${minfree[$i]}" ; SKIP_FULL="${skip_full[$i]}" ; DRY_RUN="${dry_run[$i]}"
-        MINFREE_BG="${minfree_bg[$i]}"
+        TITLE="${title[i]}"   ; ARG="${arg[i]}"       ; MODE="${mode[i]}"
+        SOURCE="${source[i]}" ; FTPSRC="${ftpsrc[i]}" ; FTPMNT="${ftpmnt[i]}"
+        TARGET="${target[i]}" ; LOG="${log[i]}"       ; EXFROM="${exfrom[i]}"
+        MINFREE="${minfree[i]}" ; SKIP_FULL="${skip_full[i]}" ; DRY_RUN="${dry_run[i]}"
+        MINFREE_BG="${minfree_bg[i]}"
         # Erforderliche Werte prüfen, und ggf. Vorgaben setzen
         notset='\e[1;41m -LEER- \e[0m'  # Anzeige, wenn nicht gesetzt
         if [[ -z "$SOURCE" || -z "$TARGET" ]] ; then
@@ -149,16 +147,16 @@ f_settings() {
         : "${LOG:=${TMPDIR}/${SELF_NAME%.*}.log}"  # Temporäre Logdatei
         : "${FILES_DIR:=_DATEIEN}"                 # Vorgabe für Sicherungsordner
         # Bei mehreren Profilen müssen die Werte erst gesichert und später wieder zurückgesetzt werden
-        [[ -n "${mount[$i]}" ]] && { _MOUNT="${MOUNT:-0}" ; MOUNT="${mount[$i]}" ;}  # Eigener Einhängepunkt
+        [[ -n "${mount[i]}" ]] && { _MOUNT="${MOUNT:-0}" ; MOUNT="${mount[i]}" ;}  # Eigener Einhängepunkt
         case "${MODE^^}" in  # ${VAR^^} ergibt Großbuchstaben!
           SNAP*) MODE='S' ; MODE_TXT='Snapshot'
-            [[ -n "${rsync_opt[$i]}" ]] && { _RSYNC_OPT_SNAPSHOT=("${RSYNC_OPT_SNAPSHOT[@]}") ; RSYNC_OPT_SNAPSHOT=(${rsync_opt[$i]}) ;}
+            [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT_SNAPSHOT=("${RSYNC_OPT_SNAPSHOT[@]}") ; RSYNC_OPT_SNAPSHOT=(${rsync_opt[i]}) ;}
           ;;
           M*) MODE='M' ; MODE_TXT='Multi rsync'  # Verwendet rsync-Optionen aus dem "normalen" Modus
-            [[ -n "${rsync_opt[$i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[$i]}) ;}
+            [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[i]}) ;}
           ;;
           *) MODE='N' ; MODE_TXT='Normal'
-            [[ -n "${rsync_opt[$i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[$i]}) ;}
+            [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[i]}) ;}
           ;;
         esac  # MODE
         [[ -n "$MINFREE_BG" && "$MODE" != "S" ]] && MODE_TXT+=" + HÜ [${MINFREE_BG} MB]"
@@ -189,22 +187,22 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
   mapfile -t < <(find "./" -type f -mtime +"$DEL_OLD_SOURCE")
   # Alte Dateien, die im Ziel sind auf der Quelle löschen
   for i in "${!MAPFILE[@]}" ; do
-    file="${MAPFILE[$i]/.\/}"  # Führendes "./" entfernen
+    file="${MAPFILE[i]/.\/}"  # Führendes "./" entfernen
     if [[ -e "${targetdir}/${file}" ]] ; then
       echo "-> Datei $file in Quelle älter als $DEL_OLD_SOURCE Tage"
     else
       echo "-> Datei $file nicht im Ziel!"  # Sollte nie passieren
-      unset -v 'MAPFILE[$i]'  # Datei aus der Liste entfernen!
+      unset -v 'MAPFILE[i]'  # Datei aus der Liste entfernen!
     fi
   done
-  printf "%s\n" "${MAPFILE[@]}" # | xargs rm --verbose '{}' >> "$LOG"
+  printf '%s\n' "${MAPFILE[@]}" # | xargs rm --verbose '{}' >> "$LOG"
   # Leere Ordner älter als $DEL_OLD_SOURCE in Quelle löschen
   find "./" -type d -empty -mtime +"$DEL_OLD_SOURCE" # -delete >> "$LOG"
 }
 
 f_countdown_wait() {
-  # echo -e "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet\e[0m"
-  printf '%-80b' "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet" ; printf '%b\n' '\e[0m'
+  # Länge des Strings [80] plus alle Steuerzeichen [9] (ohne \)
+  printf '%-89b' "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet" ; printf '%b\n' '\e[0m'
   echo -e '\e[46m \e[0m Zum Abbrechen [Strg] + [C] drücken\n\e[46m \e[0m Zum Pausieren [Strg] + [Z] drücken (Fortsetzen mit \"fg\")\n'
   for i in {5..1} ; do  # Countdown ;)
     echo -e -n "\rStart in \e[97;44m  $i  \e[0m Sekunden"
@@ -266,12 +264,7 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
 }
 
 f_source_config() {  # Konfiguration laden
-  if [[ -n "$1" ]] ; then
-    # Let shell functions inherit ERR trap.  Same as `set -E'.
-    # set -o errtrace  # Muss vor dem 'trap' sein!
-    source "$1" || f_exit 5 $?
-    set +o errtrace
-  fi
+  [[ -n "$1" ]] && { source "$1" || f_exit 5 $? ;}
 }
 
 # --- AUSFÜHRBAR? ---
@@ -313,7 +306,7 @@ while getopts ":c:" opt ; do
 done
 
 # Konfigurationsdatei laden [Wenn Skript=MV_Backup.sh Konfig=MV_Backup.conf]
-if [[ -z "$CONFLOADED" ]] ; then     # Konfiguration wurde noch nicht geladen
+if [[ -z "$CONFLOADED" ]] ; then  # Konfiguration wurde noch nicht geladen
   # Suche Konfig im aktuellen Verzeichnis, im Verzeichnis des Skripts und im eigenen etc
   CONFIG_DIRS=("." "${SELF%/*}" "${HOME}/etc") ; CONFIG_NAME="${SELF_NAME%.*}.conf"
   for dir in "${CONFIG_DIRS[@]}" ; do
@@ -409,13 +402,13 @@ fi
 # Prüfen ob alle Profile eindeutige Buchstaben haben (arg[$nr])
 for parameter in "${arg[@]}" ; do
   [[ -z "${_arg[$parameter]+_}" ]] && { _arg[$parameter]=1 ;} \
-    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t\t => arg[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit 1 ;}
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Buchstaben)\n\t\t => arg[nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit 1 ;}
 done
 
 # Prüfen ob alle Profile eindeutige Sicherungsziele verwenden (target[$nr])
 for parameter in "${target[@]}" ; do
   [[ -z "${_target[$parameter]+_}" ]] && { _target[$parameter]=1 ;} \
-    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => target[\$nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit 1 ;}
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => target[nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit 1 ;}
 done
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
@@ -430,8 +423,8 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   [[ "$PROFIL" != "$ARG" && "$PROFIL" != "customBak" ]] && { echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" >&2 ; f_help ;}
 
   # Konfiguration zu allen gewählten Profilen anzeigen
-  # echo -e "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} \e[0m"
-  printf '%-80b' "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} $msgAUTO" ; printf '%b\n' '\e[0m'
+  # Länge des Strings [80] plus alle Steuerzeichen [14] (ohne \)
+  printf '%-94b' "\n\e[30;46m  Konfiguration von:    \e[97m${TITLE} $msgAUTO" ; printf '%b\n' '\e[0m'
   echo -e "\e[46m \e[0m Sicherungsmodus:\e[1m\t${MODE_TXT}\e[0m"
   echo -e "\e[46m \e[0m Quellverzeichnis(se):\e[1m\t${SOURCE:=${MAN_SOURCE[*]}}\e[0m"
   echo -e "\e[46m \e[0m Zielverzeichnis:\e[1m\t${TARGET}\e[0m"
@@ -442,12 +435,10 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
       echo -e "\e[46m \e[0m\t\t\t${REPLY}"
     done < "$EXFROM"
   fi
-  if [[ -n "$MAILADRESS" ]] ; then                # eMail-Adresse ist angegeben
-    if [[ "$MAILONLYERRORS" == "true" ]] ; then   # eMail nur bei Fehler
-      echo -e "\e[46m \e[0m eMail-Versand an:\e[1m\t${MAILADRESS}\e[0m [NUR bei Fehler(n)]"
-    else                                          # eMail immer senden
-      echo -e "\e[46m \e[0m eMail-Versand an:\e[1m\t${MAILADRESS}\e[0m"
-    fi
+  if [[ -n "$MAILADRESS" ]] ; then  # eMail-Adresse ist angegeben
+    echo -e -n "\e[46m \e[0m eMail-Versand an:\e[1m\t${MAILADRESS}\e[0m"
+    [[ "$MAILONLYERRORS" == "true" ]] && echo -e -n ' [NUR bei Fehler(n)]'
+    echo -e '\n'
   elif [[ "$MAILONLYERRORS" == "true" ]] ; then
     echo -e '\e[1;43m \e[0m Es wurde \e[1mkeine eMail-Adresse\e[0m für den Versand bei Fehler(n) angegeben!\e[0m\n'
   fi
@@ -520,7 +511,7 @@ for PROFIL in "${P[@]}" ; do
       grep -q "$FTPMNT" /proc/mounts \
         || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" >&2 ; f_exit 1 ;}
       echo -e "OK.\nDie FTP-Quelle (${FTPSRC}) wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
-      UNMOUNTFTP=1  # Nach Sicherung wieder aushängen
+      UMOUNT_FTP=1  # Nach Sicherung wieder aushängen
     fi
   fi  # ! customBak
 
@@ -662,7 +653,7 @@ for PROFIL in "${P[@]}" ; do
         mapfile -t < "$EXFROM"  # Ausschlussliste einlesen
         mv --force "$EXFROM" "${_EXFROM:=${EXFROM}.$RANDOM}"  # Ausschlussliste für ./
         for i in "${!MAPFILE[@]}" ; do
-          [[ "${MAPFILE[$i]:0:1}" != "/" ]] && echo "${MAPFILE[$i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
+          [[ "${MAPFILE[i]:0:1}" != "/" ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
         done
 
         while read dir ; do  # Alle Ordner in der Quelle bis zur $maxdepth tiefe
@@ -673,9 +664,9 @@ for PROFIL in "${P[@]}" ; do
 
             for i in "${!MAPFILE[@]}" ; do  # Ausschlussliste verarbeiten
               # Ordner auslassen, wenn "foo" oder "foo/"
-              [[ "${MAPFILE[$i]}" == "$subfolder" || "${MAPFILE[$i]}" == "${subfolder}/" ]] && continue 2
-              if [[ "${MAPFILE[$i]:0:1}" == "/" ]] ; then  # Beginnt mit "/"
-                ONTOP=${MAPFILE[$i]:1}  # Ohne führenden "/"
+              [[ "${MAPFILE[i]}" == "$subfolder" || "${MAPFILE[i]}" == "${subfolder}/" ]] && continue 2
+              if [[ "${MAPFILE[i]:0:1}" == "/" ]] ; then  # Beginnt mit "/"
+                ONTOP=${MAPFILE[i]:1}  # Ohne führenden "/"
                 if [[ "$ONTOP" == "$subfolder" || "$ONTOP" == "${subfolder}/" ]] ; then
                   continue 2  # Ordner auslassen, wenn "/foo" oder "/foo/"
                 else  # "/foo/bar"
@@ -690,7 +681,7 @@ for PROFIL in "${P[@]}" ; do
             done
 
             if [[ ! -d "${R_TARGET}/${subfolder}" ]] ; then
-              # Zielordner erstellun und Rechte/Eigentümer von Quelle übernehmen
+              # Zielordner erstellen und Rechte/Eigentümer von Quelle übernehmen
               mkdir --parents "${R_TARGET}/${subfolder}"
               chown --reference="${SOURCE}/${subfolder}" "${R_TARGET}/${subfolder}"
               chmod --reference="${SOURCE}/${subfolder}" "${R_TARGET}/${subfolder}"
@@ -737,8 +728,8 @@ for PROFIL in "${P[@]}" ; do
         for pid in "${!JOBS[@]}" ; do
           wait "$pid" ; RC="$?"  # wait liefert $? auch für bereits beendete Prozesse
           if [[ $RC -ne 0 ]] ; then
-            echo -e "[${pid}] Beendet mit Fehler: ${RC}\n${JOBS[${pid}]}"
-            RSYNCRC+=("$RC") ; RSYNCPROF+=("${JOBS[${pid}]}")  # Profilname und Fehlercode merken
+            echo -e "[${pid}] Beendet mit Fehler: ${RC}\n${JOBS[$pid]}"
+            RSYNCRC+=("$RC") ; RSYNCPROF+=("${JOBS[$pid]}")  # Profilname und Fehlercode merken
           fi
         done
 
@@ -776,7 +767,7 @@ for PROFIL in "${P[@]}" ; do
   [[ -n "$MAILADRESS" ]] && { LOGFILES+=("$LOG") ; TARGETS+=("$TARGET") ; DEBUG echo -e "\nLOGFILES: ${LOGFILES[*]}\n\nTARGETS: ${TARGETS[*]}" ;}
 
   # Zuvor eingehängte FTP-Quelle wieder aushängen
-  [[ -n "$UNMOUNTFTP" ]] && { umount "$FTPMNT" ; unset -v 'UNMOUNTFTP' ;}
+  [[ -n "$UMOUNT_FTP" ]] && { umount "$FTPMNT" ; unset -v 'UMOUNT_FTP' ;}
 
   [[ ${RC:-0} -ne 0 ]] && ERRTEXT="\e[91mmit Fehler ($RC) \e[0;1m"
   echo -e "\a\n\n\e[1mProfil \"${TITLE}\" wurde ${ERRTEXT}${FINISHEDTEXT:=abgeschlossen}\e[0m\nWeitere Informationen sowie Fehlermeldungen sind in der Datei:\n\"${LOG}\" gespeichert.\n"
@@ -833,27 +824,27 @@ if [[ -n "$MAILADRESS" ]] ; then
   if [[ ${#RSYNCRC[@]} -ge 1 && "$SHOWERRORS" == "true" ]] ; then  # Profile mit Fehlern anzeigen
     echo -e '\n==> Profil(e) mit Fehler(n):' >> "$MAILFILE"
     for i in "${!RSYNCRC[@]}" ; do
-      echo "${RSYNCPROF[$i]} (${RSYNCRC[$i]})" >> "$MAILFILE"
+      echo "${RSYNCPROF[i]} (${RSYNCRC[i]})" >> "$MAILFILE"
     done
   fi  # SHOWERRORS
 
   if [[ "$SHOWOS" == "true" ]] ; then
-    if [[ -f "/etc/os-release" ]] ; then
+    if [[ -f '/etc/os-release' ]] ; then
       while read -r ; do
         if [[ ${REPLY^^} =~ PRETTY_NAME ]] ; then
-          OSNAME=${REPLY/*=} ; OSNAME=${OSNAME//\"/}
+          OSNAME="${REPLY/*=}" ; OSNAME="${OSNAME//\"/}"
           break
         fi
       done < /etc/os-release
     fi
-    echo -e "\n==> Auf $HOSTNAME verwendetes Bertiebssystem:\n${OSNAME:-"Unbekannt"}" >> "$MAILFILE"
+    echo -e "\n==> Auf $HOSTNAME verwendetes Bertiebssystem:\n${OSNAME:-'Unbekannt'}" >> "$MAILFILE"
   fi  # SHOWOS
 
   [[ "$SHOWOPTIONS" == "true" ]] && echo -e "\n==> Folgende Optionen wurden verwendet:\n$*" >> "$MAILFILE"
 
   for i in "${!TARGETS[@]}" ; do
     if [[ "$SHOWUSAGE" == "true" ]] ; then  # Anzeige ist abschltbar in der *.conf
-      mapfile -t < <(df -Ph "${TARGETS[$i]}")  # Ausgabe von df in Array (Zwei Zeilen)
+      mapfile -t < <(df -Ph "${TARGETS[i]}")  # Ausgabe von df in Array (Zwei Zeilen)
       TARGETLINE=(${MAPFILE[1]}) ; TARGETDEV=${TARGETLINE[0]}  # Erstes Element ist das Device
       if [[ ! "${TARGETDEVS[@]}" =~ $TARGETDEV ]] ; then
         TARGETDEVS+=("$TARGETDEV")
