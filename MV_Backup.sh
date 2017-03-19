@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170313
+VERSION=170318
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -59,7 +59,7 @@ f_exit() {  # Beenden und aufräumen $1 = ExitCode
   exit "$EXIT"
 }
 
-f_mfs_kill() {  # $1 PID der Hintergrundüberwachung
+f_mfs_kill() {  # Beenden der Hintergrundüberwachung
   echo '-> Beende Hintergrundüberwachung...'
   kill "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
   if ps --pid "$MFS_PID" &>/dev/null ; then  # Noch aktiv!
@@ -203,7 +203,7 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
 f_countdown_wait() {
   # Länge des Strings [80] plus alle Steuerzeichen [9] (ohne \)
   printf '%-89b' "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet" ; printf '%b\n' '\e[0m'
-  echo -e '\e[46m \e[0m Zum Abbrechen [Strg] + [C] drücken\n\e[46m \e[0m Zum Pausieren [Strg] + [Z] drücken (Fortsetzen mit \"fg\")\n'
+  echo -e '\e[46m \e[0m Zum Abbrechen [Strg] + [C] drücken\n\e[46m \e[0m Zum Pausieren [Strg] + [Z] drücken (Fortsetzen mit "fg")\n'
   for i in {5..1} ; do  # Countdown ;)
     echo -e -n "\rStart in \e[97;44m  $i  \e[0m Sekunden"
     sleep 1
@@ -212,12 +212,14 @@ f_countdown_wait() {
 }
 
 f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
-  local DF_LINE DF_FREE drylog mftext='MINFREE' TDATA TRANSFERRED
-  mapfile -t < <(df -B M "$TARGET")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
-  DF_LINE=(${MAPFILE[1]}) ; DF_FREE="${DF_LINE[3]%M}"  # Drittes Element ist der freie Platz (M)
-  if [[ -n "$1" ]] ; then  # Log als Parameter = dry-run. Überschreibt MINFREE!
-    drylog="$1" ; mftext='DRYRUN'
-    TRANSFERRED=($(tail --lines=15 "$drylog" | grep "Total transferred file size:"))
+  local DF_LINE DF_FREE DRYLOG MFTEXT='MINFREE' TDATA TRANSFERRED
+  if [[ -n "$DRY_RUN" ]] ; then  # In der *.conf angegeben
+    DRYLOG="${LOG%.*}.dry.log"  # Extra Log zum Auswerten
+    MFTEXT='DRYRUN'
+    echo -e '-> Starte rsync Testlauf (DRYRUN)...\n'
+    rsync "${RSYNC_OPT[@]}" --dry-run --log-file="$DRYLOG" --exclude-from="$EXFROM" \
+      --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
+    TRANSFERRED=($(tail --lines=15 "$DRYLOG" | grep "Total transferred file size:"))
     # echo "Transferiert (DRY-RUN): ${TRANSFERRED[@]}"
     case ${TRANSFERRED[7]} in
       *K) TDATA=${TRANSFERRED[7]%K} ; MINFREE=$((${TDATA%.*}/1024 + 1)) ;;  # 1K-999K
@@ -227,20 +229,29 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
       *) MINFREE=1 ;;  # 0-999 Bytes
     esac
   fi
-  if [[ $DF_FREE -lt $MINFREE ]] ; then
-    echo -e "\e[103m \e[0m Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (${mftext}=${MINFREE})"
-    echo "Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (${mftext}=${MINFREE})" >> "$ERRLOG"
-    if [[ -z "$SKIP_FULL" ]] ; then  # In der Konfig definiert
-      echo -e "\nDie Sicherung (${TITLE}) ist möglicherweise unvollständig!" >> "$ERRLOG"
-      echo -e 'Bitte überprüfen Sie auch die Einträge in den Log-Dateien!\n' >> "$ERRLOG"
+  if [[ $MINFREE -gt 0 ]] ; then  # Aus DRY_RUN oder *.conf
+    mapfile -t < <(df -B M "$TARGET")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
+    DF_LINE=(${MAPFILE[1]}) ; DF_FREE="${DF_LINE[3]%M}"  # Drittes Element ist der freie Platz (M)
+    if [[ $DF_FREE -lt $MINFREE ]] ; then
+      echo -e "\e[103m \e[0m Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (${MFTEXT}=${MINFREE})"
+      echo "Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (${MFTEXT}=${MINFREE})" >> "$ERRLOG"
+      if [[ -z "$SKIP_FULL" ]] ; then  # In der Konfig definiert
+        echo -e "\nDie Sicherung (${TITLE}) ist möglicherweise unvollständig!" >> "$ERRLOG"
+        echo -e 'Bitte überprüfen Sie auch die Einträge in den Log-Dateien!\n' >> "$ERRLOG"
+      else
+        echo -e "\n\n => Die Sicherung (${TITLE}) wird nicht durchgeführt!" >> "$ERRLOG"
+        FINISHEDTEXT='abgebrochen!'  # Text wird am Ende ausgegeben
+      fi
     else
-      echo -e "\n\n => Die Sicherung (${TITLE}) wird nicht durchgeführt!" >> "$ERRLOG"
-      FINISHEDTEXT='abgebrochen!'  # Text wird am Ende ausgegeben
-    fi
-  else
-    [[ -n "$drylog" ]] && echo -e "Testlauf (DRYRUN) von rsync ergab:\nBenötigt: $MINFREE MB Verfügbar: $DF_FREE MB" >> "$LOG"
-    unset -v 'SKIP_FULL'  # Genug Platz! Variable löschen, falls gesetzt
-  fi
+      [[ -n "$DRYLOG" ]] && echo -e "Testlauf (DRYRUN) von rsync ergab:\nBenötigt: $MINFREE MB Verfügbar: $DF_FREE MB" >> "$LOG"
+      unset -v 'SKIP_FULL'  # Genug Platz! Variable löschen, falls gesetzt
+    fi  # DF_FREE
+  elif [[ $MINFREE_BG -gt 0 ]] ; then  # Prüfung im Hintergrund
+    unset -v 'SKIP_FULL'  # Löschen, falls gesetzt
+    echo -n '-> Starte Hintergrundüberwachung...'
+    f_monitor_free_space &  # Prüfen, ob auf dem Ziel genug Platz ist (Hintergrundprozess)
+    MFS_PID=$! ; echo " PID: $MFS_PID"  # PID merken
+  fi  # MINFREE -gt 0
 }
 
 f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrundprozess [&])
@@ -255,12 +266,15 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
       { echo "Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
         echo -e "\n\n => Die Sicherung (${TITLE}) wird abgebrochen!" ;} >> "$ERRLOG"
       killall --exact rsync >/dev/null 2>> "$ERRLOG"  # Alle rsync-Prozesse beenden
-      [[ $(pgrep --exact --count rsync) -gt 0 ]] && { echo 'FEHLER! Es laufen immer noch rsync-Prozesse! Versuche zu beenden...'
-                                                      killall rsync >/dev/null 2>> "$ERRLOG" ;}
+      if pgrep --exact rsync ; then
+        echo 'FEHLER! Es laufen immer noch rsync-Prozesse! Versuche zu beenden...'
+        killall --exact --verbose rsync 2>> "$ERRLOG"
+      fi
       break  # Beenden der while-Schleife
     fi
     sleep "${MFS_TIMEOUT:-300}"  # Wenn nicht gesetzt, dann 300 Sekunden (5 Min.)
   done
+  unset -v 'MFS_PID'  # Hintergrundüberwachung ist beendet
 }
 
 f_source_config() {  # Konfiguration laden
@@ -528,21 +542,8 @@ for PROFIL in "${P[@]}" ; do
       R_TARGET="${TARGET}/${FILES_DIR}"  # Ordner für die gesicherten Dateien
 
       f_countdown_wait  # Countdown vor dem Start anzeigen
-
-      # Prüfen, ob genug Platz auf dem Ziel frei ist
-      if [[ -n "$DRY_RUN" ]] ; then  # dry_run ist in der Konfig gesetzt
-        DRY_LOG="${LOG%.*}.dry.log"  # Extra Log zum Auswerten
-        echo -e '-> Starte rsync Testlauf (DRYRUN)...\n'
-        rsync "${RSYNC_OPT[@]}" --dry-run --log-file="$DRY_LOG" --exclude-from="$EXFROM" \
-          --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
-        f_check_free_space "$DRY_LOG"  # Prüfen, ob auf dem Ziel genug Platz ist
-      elif [[ $MINFREE -gt 0 ]] ; then  # DRY_RUN hat vorrang
-        f_check_free_space  # Prüfen, ob auf dem Ziel genug Platz ist
-      elif [[ $MINFREE_BG -gt 0 ]] ; then  # Prüfung im Hintergrund
-        unset -v 'SKIP_FULL'  # Löschen, falls gesetzt
-        echo -n '-> Starte Hintergrundüberwachung...'
-        f_monitor_free_space &  # Prüfen, ob auf dem Ziel genug Platz ist (Hintergrundprozess)
-        MFS_PID=$! ; echo " PID: $MFS_PID"  # PID merken
+      if [[ -n "$DRY_RUN" || $MINFREE -gt 0 || $MINFREE_BG -gt 0 ]] ; then
+        f_check_free_space  # Platz auf dem Ziel überprüfen (DRY_RUN, MINFREE oder MINFREE_BG)
       fi
 
       # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
@@ -631,21 +632,8 @@ for PROFIL in "${P[@]}" ; do
       maxthreads=$(($(nproc)*2)) || maxthreads=2  # Fallback
 
       f_countdown_wait  # Countdown vor dem Start anzeigen
-
-      # Prüfen, ob genug Platz auf dem Ziel frei ist
-      if [[ -n "$DRY_RUN" ]] ; then  # dry_run ist in der Konfig gesetzt
-        DRY_LOG="${LOG%.*}.dry.log"  # Extra Log zum Auswerten
-        echo -e '-> Starte rsync Testlauf (DRYRUN)...\n'
-        rsync "${RSYNC_OPT[@]}" --dry-run --log-file="$DRY_LOG" --exclude-from="$EXFROM" \
-          --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
-        f_check_free_space "$DRY_LOG"  # Prüfen, ob auf dem Ziel genug Platz ist
-      elif [[ $MINFREE -gt 0 ]] ; then  # DRY_RUN hat vorrang
-        f_check_free_space  # Prüfen, ob auf dem Ziel genug Platz ist
-      elif [[ $MINFREE_BG -gt 0 ]] ; then  # Prüfung im Hintergrund
-        unset -v 'SKIP_FULL'  # Löschen, falls gesetzt
-        echo -n '-> Starte Hintergrundüberwachung...'
-        f_monitor_free_space &  # Prüfen, ob auf dem Ziel genug Platz ist (Hintergrundprozess)
-        MFS_PID=$! ; echo " PID: $MFS_PID"  # PID merken
+      if [[ -n "$DRY_RUN" || $MINFREE -gt 0 || $MINFREE_BG -gt 0 ]] ; then
+        f_check_free_space  # Platz auf dem Ziel überprüfen (DRY_RUN, MINFREE oder MINFREE_BG)
       fi
 
       # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
@@ -673,8 +661,8 @@ for PROFIL in "${P[@]}" ; do
                   exdir="${ONTOP%%/*}"  # ; echo "ONTOP aber mit Unterordner: /$ONTOP"
                   if [[ "$exdir" == "$subfolder" ]] ; then
                     newex="/${ONTOP#*/}"  # "foo/bar" -> "/bar"
-                    EXTRAEXCLUDE+=("--exclude=${newex}")
-                    # echo "Eintrag: ${MAPFILE[$i]} ->EXDIR: /$exdir ->EXCLUDE: $newex"
+                    EXTRAEXCLUDE+=("--exclude=$newex")
+                    # echo "Eintrag: ${MAPFILE[i]} ->EXDIR: /$exdir ->EXCLUDE: $newex"
                   fi
                 fi
               fi  # Beginnt mit "/"
@@ -689,8 +677,8 @@ for PROFIL in "${P[@]}" ; do
 
             # rsync-Prozesse auf $maxthreads begrenzen. Warten, wenn Anzahl erreicht ist
             while [[ $(pgrep --exact --count rsync) -ge $maxthreads ]] ; do
-              echo "Es laufen bereits ${maxthreads} rsync-Processe. Warte ${sleeptime} sekunden..."
-              sleep ${sleeptime}
+              echo "Es laufen bereits $maxthreads rsync-Processe. Warte $sleeptime sekunden..."
+              sleep "$sleeptime"
             done
 
             ((cnt++)) ; echo -e -n "-> Starte rsync-Prozess Nr. $cnt ["
@@ -706,10 +694,10 @@ for PROFIL in "${P[@]}" ; do
 
         if [[ ! -e "${TMPDIR}/.stopflag" ]] ; then  # Platte nicht voll!
           # Dateien in "./" werden im Ziel nicht gelöscht! (Vergleichen und manuell nach BAK_DIR verschieben)
-          while IFS= read -r -d $'\0' file ; do
-            if [[ ! -e "$file" ]] ; then  # Datei ist im Ziel aber nicht (mehr) auf der Quelle
-              echo -e "-> Datei \"${file}\" nicht im Quellverzeichnis.\nVerschiebe nach $BAK_DIR"
-              mv --force --verbose "${R_TARGET}/${file}" "$BAK_DIR" >> "${LOG%.log}_mv.log" 2>> "$ERRLOG"
+          while IFS= read -r -d '' ; do
+            if [[ ! -e "$REPLY" ]] ; then  # Datei ist im Ziel aber nicht (mehr) auf der Quelle
+              echo -e "-> Datei \"${REPLY}\" nicht im Quellverzeichnis.\nVerschiebe nach $BAK_DIR"
+              mv --force --verbose "${R_TARGET}/${REPLY}" "$BAK_DIR" >> "${LOG%.log}_mv.log" 2>> "$ERRLOG"
             fi
           done < <(find "$R_TARGET" -maxdepth 1 -type f -printf '%P\0')  # %P = Datei ohne führendes "./" und ohne Pfad
 
@@ -735,14 +723,13 @@ for PROFIL in "${P[@]}" ; do
 
         # Logs zusammenfassen (Jeder rsync-Prozess hat ein eigenes Log erstellt)
         [[ -f "$LOG" ]] && mv --force "$LOG" "${LOG}.old"  # Log schon vorhanden
-        OLDIFS="$IFS" ; IFS=$'\n'
-        for log in ${LOG%.log}_*.log ; do
+        shopt -s nullglob  # Nichts tun, wenn nichts gefunden wird
+        for log in "${LOG%.log}"_*.log ; do
           { echo "== Logfile: $log ==" ; cat "$log" ;} >> "$LOG"
           rm "$log" &>/dev/null
-        done ; IFS="$OLDIFS"
+        done ; shopt -u nullglob
 
         [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden!
-
         if [[ -z "$FINISHEDTEXT" ]] ; then  # Alte Daten nur löschen wenn nicht abgebrochen wurde!
           # Funktion zum Löschen alter Sicherungen aufrufen
           [[ -n "$DEL_OLD_BACKUP" ]] && f_del_old_backup "${BAK_DIR%/*}"
@@ -788,7 +775,7 @@ if [[ -n "$MAILADRESS" ]] ; then
     # Log(s) packen
     echo "Erstelle Archiv \"${ARCHIV}\" mit $((${#LOGFILES[@]}+${#ERRLOGS[@]})) Logdatei(en)..."
     tar --create --absolute-names --auto-compress --file="$TMP_ARCHIV" "${LOGFILES[@]}" "${ERRLOGS[@]}"
-    FILESIZE=$(stat -c %s "$TMP_ARCHIV")  # Größe des Archivs
+    FILESIZE="$(stat -c %s "$TMP_ARCHIV")"  # Größe des Archivs
     if [[ $FILESIZE -gt $MAXLOGSIZE ]] ; then
       rm "$TMP_ARCHIV" &>/dev/null        # Archiv ist zu groß für den eMail-Versand
       TMP_ARCHIV="${TMP_ARCHIV%%.*}.txt"  # Info-Datei als Ersatz
@@ -861,7 +848,7 @@ if [[ -n "$MAILADRESS" ]] ; then
         echo -e "\n==> Belegung von ${LOGDIR}:"
         du --human-readable --summarize "$LOGDIR"
         # TODO: Besseren Weg finden
-        for dir in ${LOGDIR}/*/ ; do  # Geht nur ohne "
+        for dir in "${LOGDIR}"/*/ ; do
           du --human-readable --summarize "$dir"
         done
       } >> "$MAILFILE"
