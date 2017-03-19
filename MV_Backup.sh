@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170318
+VERSION=170319
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -766,35 +766,35 @@ done
 if [[ -n "$MAILADRESS" ]] ; then
   DEBUG set -x
   # Variablen
-  ARCHIV="Logs_$(date +'%F-%H%M').tar.xz" # Archiv mit Datum und Zeit (kein :)
-  TMP_ARCHIV="${TMPDIR}/${ARCHIV}"        # Pfad für das Archiv
+  ARCH="Logs_$(date +'%F-%H%M').tar.xz"   # Archiv mit Datum und Zeit (kein :)
+  ARCHIV="${TMPDIR}/${ARCHIV}"            # Pfad für das Archiv
   MAILFILE="${TMPDIR}/~Mail.txt"          # Mailfile im Arbeitsspeicher oder /tmp
   SUBJECT="Sicherungs-Bericht von $SELF_NAME auf $HOSTNAME" # Betreff der Mail
 
   if [[ ${MAXLOGSIZE:=$((1024*1024))} -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
     # Log(s) packen
     echo "Erstelle Archiv \"${ARCHIV}\" mit $((${#LOGFILES[@]}+${#ERRLOGS[@]})) Logdatei(en)..."
-    tar --create --absolute-names --auto-compress --file="$TMP_ARCHIV" "${LOGFILES[@]}" "${ERRLOGS[@]}"
-    FILESIZE="$(stat -c %s "$TMP_ARCHIV")"  # Größe des Archivs
+    tar --create --absolute-names --auto-compress --file="$ARCHIV" "${LOGFILES[@]}" "${ERRLOGS[@]}"
+    FILESIZE="$(stat -c %s "$ARCHIV")"    # Größe des Archivs
     if [[ $FILESIZE -gt $MAXLOGSIZE ]] ; then
-      rm "$TMP_ARCHIV" &>/dev/null        # Archiv ist zu groß für den eMail-Versand
-      TMP_ARCHIV="${TMP_ARCHIV%%.*}.txt"  # Info-Datei als Ersatz
+      rm "$ARCHIV" &>/dev/null            # Archiv ist zu groß für den eMail-Versand
+      ARCHIV="${ARCHIV%%.*}.txt"          # Info-Datei als Ersatz
       { echo 'Die gepackte(n) Logdatei(en) sind zu groß für den Versand per eMail.'
         echo "Der eingestellte Wert für die Maximalgröße ist $MAXLOGSIZE Bytes"
         echo -e '\n==> Liste der lokal angelegten Log-Datei(en):'
         for file in "${LOGFILES[@]}" "${ERRLOGS[@]}" ; do
           echo "$file"
         done
-      } > "$TMP_ARCHIV"
+      } > "$ARCHIV"
     fi
   else  # MAXLOGSIZE=0
-    TMP_ARCHIV="${TMP_ARCHIV%%.*}.txt"    # Info-Datei
+    ARCHIV="${ARCHIV%%.*}.txt"  # Info-Datei
     { echo 'Das Senden von Logdateien ist deaktiviert (MAXLOGSZE=0).'
       echo -e '\n==> Liste der lokal angelegten Log-Datei(en):'
       for file in "${LOGFILES[@]}" "${ERRLOGS[@]}" ; do
         echo "$file"
       done
-    } > "$TMP_ARCHIV"
+    } > "$ARCHIV"
   fi
 
   # Text der eMail erzeugen
@@ -861,19 +861,19 @@ if [[ -n "$MAILADRESS" ]] ; then
     echo "Sende eMail an ${MAILADRESS}..."
     case "$MAILPROG" in
       mpack)  # Sende Mail mit mpack via ssmtp
-        mpack -s "$SUBJECT" -d "$MAILFILE" "$TMP_ARCHIV" "$MAILADRESS"  # Kann "root" sein, wenn in sSMTP konfiguriert
+        mpack -s "$SUBJECT" -d "$MAILFILE" "$ARCHIV" "$MAILADRESS"  # Kann "root" sein, wenn in sSMTP konfiguriert
       ;;
       sendmail)  # Variante mit sendmail und uuencode
         mail_to_send="${TMPDIR}/~mail_to_send"
-        { echo "Subject: $SUBJECT" ; cat "$MAILFILE" ; uuencode "$TMP_ARCHIV" "$ARCHIV" ;} > "$mail_to_send"
+        { echo "Subject: $SUBJECT" ; cat "$MAILFILE" ; uuencode "$ARCHIV" "$ARCH" ;} > "$mail_to_send"
         sendmail "$MAILADRESS" < "$mail_to_send"
       ;;
       send[Ee]mail)  # Variante mit "sendEmail". Keine " für die Variable $USETLS verwenden!
-        sendEmail -f "$MAILSENDER" -t "$MAILADRESS" -u "$SUBJECT" -o message-file="$MAILFILE" -a "$TMP_ARCHIV" \
+        sendEmail -f "$MAILSENDER" -t "$MAILADRESS" -u "$SUBJECT" -o message-file="$MAILFILE" -a "$ARCHIV" \
           -o message-charset=utf-8 -s "${MAILSERVER}:${MAILPORT}" -xu "$MAILUSER" -xp "$MAILPASS" $USETLS
       ;;
       e[Mm]ail)  # Sende Mail mit eMail (https://github.com/deanproxy/eMail)
-        email -s "$SUBJECT" -attach "$TMP_ARCHIV" "$MAILADRESS" < "$MAILFILE"  # Die auführbare Datei ist 'email'
+        email -s "$SUBJECT" -attach "$ARCHIV" "$MAILADRESS" < "$MAILFILE"  # Die auführbare Datei ist 'email'
       ;;
       mail)  # Sende Mail mit mail (http://j.mp/2kZlJdk)
         mail -s "$SUBJECT" -a "$ARCHIV" "$MAILADRESS" < "$MAILFILE"
