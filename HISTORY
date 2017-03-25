@@ -52,26 +52,26 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
        wenn die Datei auch im Ziel gefunden wird. Funktioniert nur mit einem Profil!   
        Wird im Snapshot-Modus nicht verwendet!                                         
 01.08.2016
- Neu:  Profiloption: minfree[$nr]. Wert in Megabyte. Freier Platz, der auf dem Ziel    
+ Neu:  Profiloption: minfree[]. Wert in Megabyte. Freier Platz, der auf dem Ziel    
        mindestens frei sein muss. Bei Unterschreitung wird eine Warnung angezeigt und  
        in das Fehlerlog geschrieben. Das Backup wird NICHT angehalten! (siehe unten)   
        (Nur im Modus normal)                                                           
- Neu:  Profiloption: skip_full[$nr]. Wenn gesetzt, wird das Profil nicht gesichert,    
-       wenn der angegebene freie Platz (minfree[$nr]) nicht vorhanden ist              
+ Neu:  Profiloption: skip_full[]. Wenn gesetzt, wird das Profil nicht gesichert,    
+       wenn der angegebene freie Platz (minfree[]) nicht vorhanden ist              
        (Nur im Modus normal)                                                           
 10.08.2016
- Neu:  Profiloption: dry_run[$nr]. Wenn gesetzt, wird vor dem Backup mit einem         
+ Neu:  Profiloption: dry_run[]. Wenn gesetzt, wird vor dem Backup mit einem         
        (Dry-Run) geprüft, ob noch genug Platz auf dem Ziel vorhanden ist (Langsam).    
-       Überschreibt minfree[$nr]. Kann mit skip_full[$nr] verwendet werden             
+       Überschreibt minfree[]. Kann mit skip_full[] verwendet werden             
        (Nur im Modus normal)                                                           
 17.08.2016
- Neu:  Profiloption: minfree_bg[$nr]. Wert in Megabyte. Freier Platz, der auf dem Ziel 
+ Neu:  Profiloption: minfree_bg[]. Wert in Megabyte. Freier Platz, der auf dem Ziel 
        mindestens frei sein muss. Bei Unterschreitung wird eine Warnung angezeigt und  
        in das Fehlerlog geschrieben. Das Backup wird abgebrochen! Darf nicht mit       
-       minfree[$nr] verwendet werden. Wird alle 5 Minuten geprüft.                     
+       minfree[] verwendet werden. Wird alle 5 Minuten geprüft.                     
        (Nur im Modus normal)                                                           
 20.08.2016
- Neu:  Die Optionen minfree[$nr], skip_full[$nr], dry_run[$nr] und minfree_bg[$nr]     
+ Neu:  Die Optionen minfree[], skip_full[], dry_run[] und minfree_bg[]     
        nun auch im Modus Multi verfügbar.                                              
        Beenden der Hintergrundüberwachung wenn STRG-C gedrückt wird.                   
 21.08.2016
@@ -92,5 +92,5 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
 17.02.2017
  Neu:  eMail-Versand mit mail (http://j.mp/2kZlJdk)
 18.02.2017
- Neu:  Eigenes eMail-Programm kann nun defiuniert werden. Daz muss die komplette Befehls-
-       zeile angegeben werden. Platzhalter für Betreff usw. sind definiert. Siene *.conf
+ Neu:  Eigenes eMail-Programm kann nun definiert werden. Dazu muss die komplette Befehls-
+       zeile angegeben werden. Platzhalter für Betreff usw. sind definiert. Siehe *.conf
