@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170325
+VERSION=170326
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -48,7 +48,7 @@ f_exit() {  # Beenden und aufräumen $1 = ExitCode
     [[ -n "$POST_ACTION" ]] && echo 'Achtung: POST_ACTION wird nicht ausgeführt!'
     [[ -n "$MAILADRESS" ]] && echo 'Achtung: Es erfolgt kein eMail-Versand!'
   fi
-  [[ "$EXIT" -eq 2 ]] && echo -e "$msgERR (${5:-x}) in Zeile $3 ($4):\e[0m\n$2\n"
+  [[ "$EXIT" -eq 2 ]] && echo -e "$msgERR (${5:-x}) in Zeile $3 ($4):\e[0m\n$2\n" >&2
   [[ "$EXIT" -ge 1 ]] && { set -o posix ; set ;} > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
   [[ -n "${exfrom[*]}" ]] && rm "${exfrom[@]}" 2>/dev/null
   [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR"  # Ordner für temporäre Dateien
@@ -58,10 +58,10 @@ f_exit() {  # Beenden und aufräumen $1 = ExitCode
 }
 
 f_mfs_kill() {  # Beenden der Hintergrundüberwachung
-  echo -e "$msgINF Beende Hintergrundüberwachung..."
+  echo -e "$msgINF Beende Hintergrundüberwachung…"
   kill "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
   if ps --pid "$MFS_PID" &>/dev/null ; then  # Noch aktiv!
-    echo '!> Hintergrundüberwachung konnte nicht beendet werden! Versuche erneut...'
+    echo '!> Hintergrundüberwachung konnte nicht beendet werden! Versuche erneut…'
     kill -9 "$MFS_PID" &>/dev/null  # Hintergrundüberwachung beenden
   else
     unset -v 'MFS_PID'
@@ -106,7 +106,8 @@ f_help() {
 }
 
 f_settings() {
-  if [[ "$PROFIL" != "customBak" ]] ; then
+  local notset='\e[1;41m -LEER- \e[0m'  # Anzeige, wenn nicht gesetzt
+  if [[ "$PROFIL" != 'customBak' ]] ; then
     # Benötigte Werte aus dem Array (.conf) holen
     for i in "${!arg[@]}" ; do  # Anzahl der vorhandenen Profile ermitteln
       if [[ "${arg[i]}" == "$PROFIL" ]] ; then  # Wenn das gewünschte Profil gefunden wurde
@@ -121,7 +122,6 @@ f_settings() {
         MINFREE="${minfree[i]}" ; SKIP_FULL="${skip_full[i]}" ; DRY_RUN="${dry_run[i]}"
         MINFREE_BG="${minfree_bg[i]}"
         # Erforderliche Werte prüfen, und ggf. Vorgaben setzen
-        notset='\e[1;41m -LEER- \e[0m'  # Anzeige, wenn nicht gesetzt
         if [[ -z "$SOURCE" || -z "$TARGET" ]] ; then
           echo -e "$msgERR Quelle und/oder Ziel sind nicht konfiguriert!\e[0m" >&2
           echo -e " Profil:    \"${TITLE:-$notset}\"\n Parameter: \"${ARG:-$notset}\" (Nummer: $i)"
@@ -153,19 +153,20 @@ f_settings() {
           M*) MODE='M' ; MODE_TXT='Multi rsync'  # Verwendet rsync-Optionen aus dem "normalen" Modus
             [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[i]}) ;}
           ;;
-          *) MODE='N' ; MODE_TXT='Normal'
+          *) MODE='N' ; MODE_TXT='Normal'  # Vorgabe: Normaler Modus
             [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[i]}) ;}
           ;;
         esac  # MODE
-        [[ -n "$MINFREE_BG" && "$MODE" != "S" ]] && MODE_TXT+=" + HÜ [${MINFREE_BG} MB]"
+        [[ -n "$MINFREE_BG" && "$MODE" != 'S' ]] && MODE_TXT+=" + HÜ [${MINFREE_BG} MB]"
       fi
     done
   fi
+  return 0
 }
 
 f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
-  echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind..."
-  { echo "$(date +"%F %R.%S"): Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind..."
+  echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
+  { echo "$(date +"%F %R.%S"): Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
       | xargs --null rm --recursive --force --verbose
     # Logdatei(en) löschen (Wenn $TITLE im Namen)
@@ -179,8 +180,8 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
   local file srcdir="$1" targetdir="$2"
   [[ $# -ne 2 ]] && return 1  # Benötigt Quelle und Ziel als Parameter
   cd "$srcdir" || return 1    # Bei Fehler abbruch
-  echo "Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind..."
-  echo "$(date +"%F %R.%S"): Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind..." >> "$LOG"
+  echo "Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…"
+  echo "$(date +"%F %R.%S"): Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…" >> "$LOG"
   # Dateien auf Quelle die älter als $DEL_OLD_SOURCE Tage sind einlesen
   mapfile -t < <(find "./" -type f -mtime +"$DEL_OLD_SOURCE")
   # Alte Dateien, die im Ziel sind auf der Quelle löschen
@@ -214,7 +215,7 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
   if [[ -n "$DRY_RUN" ]] ; then  # In der *.conf angegeben
     DRYLOG="${LOG%.*}.dry.log"  # Extra Log zum Auswerten
     MFTEXT='DRYRUN'
-    echo -e "$msgINF Starte rsync Testlauf (DRYRUN)...\n"
+    echo -e "$msgINF Starte rsync Testlauf (DRYRUN)…\n"
     rsync "${RSYNC_OPT[@]}" --dry-run --log-file="$DRYLOG" --exclude-from="$EXFROM" \
       --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
     TRANSFERRED=($(tail --lines=15 "$DRYLOG" | grep "Total transferred file size:"))
@@ -246,7 +247,7 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
     fi  # DF_FREE
   elif [[ $MINFREE_BG -gt 0 ]] ; then  # Prüfung im Hintergrund
     unset -v 'SKIP_FULL'  # Löschen, falls gesetzt
-    echo -e -n "$msgINF Starte Hintergrundüberwachung..."
+    echo -e -n "$msgINF Starte Hintergrundüberwachung…"
     f_monitor_free_space &  # Prüfen, ob auf dem Ziel genug Platz ist (Hintergrundprozess)
     MFS_PID=$! ; echo " PID: $MFS_PID"  # PID merken
   fi  # MINFREE -gt 0
@@ -265,7 +266,7 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
         echo -e "\n\n => Die Sicherung (${TITLE}) wird abgebrochen!" ;} >> "$ERRLOG"
       killall --exact rsync >/dev/null 2>> "$ERRLOG"  # Alle rsync-Prozesse beenden
       if pgrep --exact rsync ; then
-        echo 'FEHLER! Es laufen immer noch rsync-Prozesse! Versuche zu beenden...'
+        echo 'FEHLER! Es laufen immer noch rsync-Prozesse! Versuche zu beenden…'
         killall --exact --verbose rsync 2>> "$ERRLOG"
       fi
       break  # Beenden der while-Schleife
@@ -302,7 +303,7 @@ else                           # PID-Datei existiert nicht. Neu anlegen
 fi
 
 # --- KONFIGURATION LADEN ---
-# Testen, ob Konfiguration angegeben wurde (-c ...)
+# Testen, ob Konfiguration angegeben wurde (-c …)
 while getopts ":c:" opt ; do
   case "$opt" in
     c) CONFIG="$OPTARG"
@@ -320,7 +321,7 @@ done
 # Konfigurationsdatei laden [Wenn Skript=MV_Backup.sh Konfig=MV_Backup.conf]
 if [[ -z "$CONFLOADED" ]] ; then  # Konfiguration wurde noch nicht geladen
   # Suche Konfig im aktuellen Verzeichnis, im Verzeichnis des Skripts und im eigenen etc
-  CONFIG_DIRS=("." "${SELF%/*}" "${HOME}/etc") ; CONFIG_NAME="${SELF_NAME%.*}.conf"
+  CONFIG_DIRS=('.' "${SELF%/*}" "${HOME}/etc") ; CONFIG_NAME="${SELF_NAME%.*}.conf"
   for dir in "${CONFIG_DIRS[@]}" ; do
     CONFIG="${dir}/${CONFIG_NAME}"
     if [[ -f "$CONFIG" ]] ; then
@@ -380,21 +381,21 @@ while getopts "$optspec" opt ; do
     h) f_help ;;                    # Hilfe anzeigen
     -) case "$OPTARG" in            # Lange Option (--)
          del-old-source)            # Parameter nach Leerzeichen
-           DEL_OLD_SOURCE="${!OPTIND}"; ((OPTIND++))
+           DEL_OLD_SOURCE="${!OPTIND}"; ((OPTIND+=1))
            # echo "Option: --${OPTARG}, Wert: ${DEL_OLD_SOURCE}" >&2;
          ;;
          del-old-source=*)          # Parameter nach "="
            val="${OPTARG#*=}" ; DEL_OLD_SOURCE="${OPTARG%=$val}"
            # echo "Option: --${opt}, Wert: ${DEL_OLD_SOURCE}" >&2
          ;;
-         *) if [[ "$OPTERR" = 1 ]] ; then
+         *) if [[ "$OPTERR" == 1 ]] ; then
               echo -e "$msgERR Unbekannte Option: --${OPTARG}\e[0m\n" >&2
               f_help
             fi
          ;;
        esac
        ;;
-    *) if [[ "$OPTERR" != 1 || "${optspec:0:1}" = ":" ]] ; then
+    *) if [[ "$OPTERR" != 1 || "${optspec:0:1}" == ':' ]] ; then
          echo -e "$msgERR Unbekannte Option: -${OPTARG}\e[0m\n" && f_help
        fi
     ;;
@@ -432,7 +433,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   f_settings
 
   # Wurden der Option -p gültige Argument zugewiesen?
-  [[ "$PROFIL" != "$ARG" && "$PROFIL" != "customBak" ]] && { echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" >&2 ; f_help ;}
+  [[ "$PROFIL" != "$ARG" && "$PROFIL" != 'customBak' ]] && { echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" >&2 ; f_help ;}
 
   # Konfiguration zu allen gewählten Profilen anzeigen
   # Länge des Strings [80] plus alle Steuerzeichen [14] (ohne \)
@@ -441,7 +442,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   echo -e "\e[46m \e[0m Quellverzeichnis(se):\e[1m\t${SOURCE:=${MAN_SOURCE[*]}}\e[0m"
   echo -e "\e[46m \e[0m Zielverzeichnis:\e[1m\t${TARGET}\e[0m"
   echo -e "\e[46m \e[0m Log-Datei:\e[1m\t\t${LOG}\e[0m"
-  if [[ "$PROFIL" != "customBak" ]] ; then
+  if [[ "$PROFIL" != 'customBak' ]] ; then
     echo -e '\e[46m \e[0m Ausschluss:'
     while read -r ; do
       echo -e "\e[46m \e[0m\t\t\t${REPLY}"
@@ -449,9 +450,8 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   fi
   if [[ -n "$MAILADRESS" ]] ; then  # eMail-Adresse ist angegeben
     echo -e -n "\e[46m \e[0m eMail-Versand an:\e[1m\t${MAILADRESS}\e[0m"
-    [[ "$MAILONLYERRORS" == "true" ]] && echo -e -n ' [NUR bei Fehler(n)]'
-    echo -e '\n'
-  elif [[ "$MAILONLYERRORS" == "true" ]] ; then
+    [[ "$MAILONLYERRORS" == 'true' ]] && { echo ' [NUR bei Fehler(n)]' ;} || echo ''
+  elif [[ "$MAILONLYERRORS" == 'true' ]] ; then
     echo -e '\e[1;43m \e[0m Es wurde \e[1mkeine eMail-Adresse\e[0m für den Versand bei Fehler(n) angegeben!\e[0m\n'
   fi
   if [[ -n "$DEL_OLD_BACKUP" ]] ; then
@@ -483,7 +483,7 @@ NEEDPROGS=(find mktemp rsync "$NOTIFY" "$WALL")
 [[ -n "$FTPSRC" ]] && NEEDPROGS+=(curlftpfs)
 if [[ -n "$MAILADRESS" ]] ; then
   [[ "${MAILPROG^^}" == "CUSTOMMAIL" ]] && { NEEDPROGS+=("${CUSTOM_MAIL[0]}") ;} || NEEDPROGS+=("$MAILPROG")
-  [[ "$MAILPROG" == "sendmail" ]] && NEEDPROGS+=(uuencode)
+  [[ "$MAILPROG" == 'sendmail' ]] && NEEDPROGS+=(uuencode)
   NEEDPROGS+=(tar)
 fi
 for prog in "${NEEDPROGS[@]}" ; do
@@ -496,33 +496,38 @@ fi
 
 # --- PRE_ACTION ---
 if [[ -n "$PRE_ACTION" ]] ; then
-  echo -e "$msgINF Führe PRE_ACTION-Befehl(e) aus..."
+  echo -e "$msgINF Führe PRE_ACTION-Befehl(e) aus…"
   eval "$PRE_ACTION" || { echo "Fehler beim Ausführen von \"${PRE_ACTION}\"!" ; sleep 10 ;}
 fi
 
 for PROFIL in "${P[@]}" ; do
   f_settings ; f_bak_dir
 
-  if [[ "$PROFIL" != "customBak" ]] ; then  # Nicht bei benutzerdefinierter Sicherung
+  if [[ "$PROFIL" != 'customBak' ]] ; then  # Nicht bei benutzerdefinierter Sicherung
     # "/" am Ende entfernen
     f_remove_slash SOURCE ; f_remove_slash TARGET ; f_remove_slash BAK_DIR
 
     # Festplatte (Ziel) eingebunden?  //TODO: Bessere Methode für grep finden
-    if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep "$MOUNT" /proc/mounts) ]] ; then
-      echo -e -n "$msgINF Versuche Sicherungsziel (${MOUNT}) einzuhängen..."
-      mount "$MOUNT" &>/dev/null \
-        || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden!\e[0m (\"${MOUNT}\")" >&2 ; f_exit 1 ;}
-      echo -e "OK.\nDas Sicherungsziel (\"${MOUNT}\") wurde erfolgreich eingehängt."
-      UNMOUNT+=("$MOUNT")  # Nach Sicherung wieder aushängen (Einhängepunkt merken)
+    # if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep "$MOUNT" /proc/mounts &>/dev/null) ]] ; then
+    if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* ]] ; then
+      if ! mountpoint -q "$MOUNT" ; then
+        echo -e -n "$msgINF Versuche Sicherungsziel (${MOUNT}) einzuhängen…"
+        mount "$MOUNT" &>/dev/null \
+          || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${MOUNT}\")" >&2 ; f_exit 1 ;}
+        echo -e "OK.\nDas Sicherungsziel (\"${MOUNT}\") wurde erfolgreich eingehängt."
+        UNMOUNT+=("$MOUNT")  # Nach Sicherung wieder aushängen (Einhängepunkt merken)
+      fi  # ! mountpoint
     fi
     # Ist die Quelle ein FTP und eingebunden?
-    if [[ -n "$FTPSRC" && ! $(grep "$FTPMNT" /proc/mounts) ]] ; then
-      echo -e -n "$msgINF Versuche FTP-Quelle (${FTPSRC}) unter \"${FTPMNT}\" einzuhängen..."
-      curlftpfs "$FTPSRC" "$FTPMNT" &>/dev/null    # FTP einhängen
-      grep -q "$FTPMNT" /proc/mounts \
-        || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden!\e[0m (\"${FTPMNT}\")" >&2 ; f_exit 1 ;}
-      echo -e "OK.\nDie FTP-Quelle (${FTPSRC}) wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
-      UMOUNT_FTP=1  # Nach Sicherung wieder aushängen
+    if [[ -n "$FTPSRC" ]] ; then
+      if ! mountpoint "$FTPMNT" ; then
+        echo -e -n "$msgINF Versuche FTP-Quelle (${FTPSRC}) unter \"${FTPMNT}\" einzuhängen…"
+        curlftpfs "$FTPSRC" "$FTPMNT" &>/dev/null    # FTP einhängen
+        grep -q "$FTPMNT" /proc/mounts \
+          || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${FTPMNT}\")" >&2 ; f_exit 1 ;}
+        echo -e "OK.\nDie FTP-Quelle (${FTPSRC}) wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
+        UMOUNT_FTP=1  # Nach Sicherung wieder aushängen
+      fi  # ! mountpoint
     fi
   fi  # ! customBak
 
@@ -548,8 +553,8 @@ for PROFIL in "${P[@]}" ; do
         # Sicherung mit rsync starten
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT[*]} --log-file=$LOG --exclude-from=$EXFROM --backup-dir=$BAK_DIR $SOURCE $R_TARGET" >> "$LOG"
-        echo -e "$msgINF Starte Sicherung (rsync)..."
-        if [[ "$PROFIL" == "customBak" ]] ; then  # Verzeichnisse wurden manuell übergeben
+        echo -e "$msgINF Starte Sicherung (rsync)…"
+        if [[ "$PROFIL" == 'customBak' ]] ; then  # Verzeichnisse wurden manuell übergeben
           rsync "${RSYNC_OPT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
             --backup-dir="$BAK_DIR" "${MAN_SOURCE[@]}" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
         else
@@ -584,7 +589,7 @@ for PROFIL in "${P[@]}" ; do
 
       if [[ -n "$LASTBACKUP" ]] ; then
         # Mittels dryRun überprüfen, ob sich etwas geändert hat
-        echo "Prüfe, ob es Änderungen zu $LASTBACKUP gibt..."
+        echo "Prüfe, ob es Änderungen zu $LASTBACKUP gibt…"
         TFL="$(mktemp "${TMPDIR}/tmp.rsync.XXXX")"
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --dry-run --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" &> "$TFL"
@@ -604,7 +609,7 @@ for PROFIL in "${P[@]}" ; do
         # Sicherung mit rsync starten
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBAKDIR" >> "$LOG"
-        echo -e "$msgINF Starte Sicherung (rsync)..."
+        echo -e "$msgINF Starte Sicherung (rsync)…"
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" >/dev/null 2>> "$ERRLOG"
         RC=$? ; if [[ $RC -ne 0 ]] ; then
@@ -638,10 +643,10 @@ for PROFIL in "${P[@]}" ; do
         mapfile -t < "$EXFROM"  # Ausschlussliste einlesen
         mv --force "$EXFROM" "${_EXFROM:=${EXFROM}.$RANDOM}"  # Ausschlussliste für ./
         for i in "${!MAPFILE[@]}" ; do
-          [[ "${MAPFILE[i]:0:1}" != "/" ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
+          [[ "${MAPFILE[i]:0:1}" != '/' ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
         done
 
-        while read dir ; do  # Alle Ordner in der Quelle bis zur $maxdepth tiefe
+        while read -r dir ; do  # Alle Ordner in der Quelle bis zur $maxdepth tiefe
           [[ -e "${TMPDIR}/.stopflag" ]] && break  # Platte voll!
           DIR_C="${dir//[^\/]}"  # Alle Zeichen außer "/" löschen
           if [[ ${#DIR_C} -ge $depth ]] ; then  # Min. ${depth} "/"
@@ -650,7 +655,7 @@ for PROFIL in "${P[@]}" ; do
             for i in "${!MAPFILE[@]}" ; do  # Ausschlussliste verarbeiten
               # Ordner auslassen, wenn "foo" oder "foo/"
               [[ "${MAPFILE[i]}" == "$subfolder" || "${MAPFILE[i]}" == "${subfolder}/" ]] && continue 2
-              if [[ "${MAPFILE[i]:0:1}" == "/" ]] ; then  # Beginnt mit "/"
+              if [[ "${MAPFILE[i]:0:1}" == '/' ]] ; then  # Beginnt mit "/"
                 ONTOP=${MAPFILE[i]:1}  # Ohne führenden "/"
                 if [[ "$ONTOP" == "$subfolder" || "$ONTOP" == "${subfolder}/" ]] ; then
                   continue 2  # Ordner auslassen, wenn "/foo" oder "/foo/"
@@ -674,11 +679,11 @@ for PROFIL in "${P[@]}" ; do
 
             # rsync-Prozesse auf $maxthreads begrenzen. Warten, wenn Anzahl erreicht ist
             while [[ $(pgrep --exact --count rsync) -ge $maxthreads ]] ; do
-              echo -e "$msgINF Es laufen bereits $maxthreads rsync-Processe. Warte $sleeptime sekunden..."
+              echo -e "$msgINF Es laufen bereits $maxthreads rsync-Processe. Warte $sleeptime sekunden…"
               sleep "$sleeptime"
             done
 
-            ((cnt++)) ; echo -e -n "$msgINF Starte rsync-Prozess Nr. $cnt ["
+            ((cnt+=1)) ; echo -e -n "$msgINF Starte rsync-Prozess Nr. $cnt ["
             # rsync für den aktuellen Unterordner im Hintergrund starten
             echo "rsync ${RSYNC_OPT[*]} --log-file=${LOG%.log}_$cnt.log --exclude-from=$EXFROM ${EXTRAEXCLUDE[*]} --backup-dir=${BAK_DIR}/${subfolder} ${SOURCE}/${subfolder}/ ${R_TARGET}/${subfolder}/" >> "${LOG%.log}_$cnt.log"
             nohup rsync "${RSYNC_OPT[@]}" --log-file="${LOG%.log}_$cnt.log" --exclude-from="$EXFROM" "${EXTRAEXCLUDE[@]}" --backup-dir="${BAK_DIR}/${subfolder}" \
@@ -698,7 +703,7 @@ for PROFIL in "${P[@]}" ; do
             fi
           done < <(find "$R_TARGET" -maxdepth 1 -type f -printf '%P\0')  # %P = Datei ohne führendes "./" und ohne Pfad
 
-          ((cnt++)) ; echo -e -n "$msgINF Starte rsync für Dateien im Stammordner"
+          ((cnt+=1)) ; echo -e "$msgINF Starte rsync für Dateien im Stammordner"
           # Dateien über maxdepth Tiefe ebenfalls mit rsync sichern
           echo "find . -maxdepth $depth -type f -print0 | rsync ${RSYNC_OPT[*]} --log-file=${LOG%.log}_$cnt.log --exclude-from=$_EXFROM --backup-dir=$BAK_DIR --files-from=- --from0 ./ ${R_TARGET}/" >> "${LOG%.log}_$cnt.log"
           rsync "${RSYNC_OPT[@]}" --log-file="${LOG%.log}_$cnt.log" --exclude-from="$_EXFROM" \
@@ -756,7 +761,7 @@ for PROFIL in "${P[@]}" ; do
   [[ ${RC:-0} -ne 0 ]] && ERRTEXT="\e[91mmit Fehler ($RC) \e[0;1m"
   echo -e "\a\n\n${msgINF} \e[1mProfil \"${TITLE}\" wurde ${ERRTEXT}${FINISHEDTEXT:=abgeschlossen}\e[0m"
   echo -e "  Weitere Informationen sind in der Datei:\n  \"${LOG}\" gespeichert.\n"
-  [[ -s "$ERRLOG" ]] && echo -e "$msgINF Fehlermeldungen wurden in der Datei:\n\"${ERRLOG}\" gespeichert.\n"
+  [[ -s "$ERRLOG" ]] && echo -e "$msgINF Fehlermeldungen wurden in der Datei:\n  \"${ERRLOG}\" gespeichert.\n"
   unset -v 'RC' 'ERRTEXT'  # $RC und $ERRTEXT zurücksetzen
 done
 
@@ -770,7 +775,7 @@ if [[ -n "$MAILADRESS" ]] ; then
 
   if [[ ${MAXLOGSIZE:=$((1024*1024))} -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
     # Log(s) packen
-    echo -e "$msgINF Erstelle Archiv \"${ARCHIV}\" mit $((${#LOGFILES[@]}+${#ERRLOGS[@]})) Logdatei(en)..."
+    echo -e "$msgINF Erstelle Archiv \"${ARCHIV}\" mit $((${#LOGFILES[@]}+${#ERRLOGS[@]})) Logdatei(en)…"
     tar --create --absolute-names --auto-compress --file="$ARCHIV" "${LOGFILES[@]}" "${ERRLOGS[@]}"
     FILESIZE="$(stat -c %s "$ARCHIV")"    # Größe des Archivs
     if [[ $FILESIZE -gt $MAXLOGSIZE ]] ; then
@@ -795,24 +800,25 @@ if [[ -n "$MAILADRESS" ]] ; then
   fi
 
   # Text der eMail erzeugen
-  echo -e "$msgINF Erzeuge Text für die eMail..."
-  echo -e "Sicherungs-Bericht von $SELF_NAME [#${VERSION}] auf ${HOSTNAME}.\n" > "$MAILFILE"
-  echo -e -n 'Die letzte Sicherung wurde beendet. ' >> "$MAILFILE"
-  [[ ${#LOGFILES[@]} -ge 1 ]] && echo "Es wurde(n) ${#LOGFILES[@]} Log-Datei(en) erstellt." >> "$MAILFILE"
+  echo -e "$msgINF Erzeuge Text für die eMail…"
+  { echo -e "Sicherungs-Bericht von $SELF_NAME [#${VERSION}] auf ${HOSTNAME}.\n"
+    echo -n 'Die letzte Sicherung wurde beendet. '
+    [[ ${#LOGFILES[@]} -ge 1 ]] && echo "Es wurde(n) ${#LOGFILES[@]} Log-Datei(en) erstellt."
+  } > "$MAILFILE"
 
   if [[ ${#ERRLOGS[@]} -ge 1 ]] ; then
     echo -e "\n==> Zusätzlich wurde(n) ${#ERRLOGS[@]} Fehler-Log(s) erstellt!" >> "$MAILFILE"
     SUBJECT="FEHLER bei Sicherung von $SELF_NAME auf $HOSTNAME"  # Neuer Betreff der Mail bei Fehlern
   fi
 
-  if [[ ${#RSYNCRC[@]} -ge 1 && "$SHOWERRORS" == "true" ]] ; then  # Profile mit Fehlern anzeigen
+  if [[ ${#RSYNCRC[@]} -ge 1 && "$SHOWERRORS" == 'true' ]] ; then  # Profile mit Fehlern anzeigen
     echo -e '\n==> Profil(e) mit Fehler(n):' >> "$MAILFILE"
     for i in "${!RSYNCRC[@]}" ; do
       echo "${RSYNCPROF[i]} (${RSYNCRC[i]})" >> "$MAILFILE"
     done
   fi  # SHOWERRORS
 
-  if [[ "$SHOWOS" == "true" ]] ; then  # //TODO uname --all ?
+  if [[ "$SHOWOS" == 'true' ]] ; then  # //TODO uname --all ?
     if [[ -f '/etc/os-release' ]] ; then
       while read -r ; do
         if [[ ${REPLY^^} =~ PRETTY_NAME ]] ; then
@@ -824,12 +830,12 @@ if [[ -n "$MAILADRESS" ]] ; then
     echo -e "\n==> Auf $HOSTNAME verwendetes Betriebssystem:\n${OSNAME:-'Unbekannt'}" >> "$MAILFILE"
   fi  # SHOWOS
 
-  [[ "$SHOWOPTIONS" == "true" ]] && echo -e "\n==> Folgende Optionen wurden verwendet:\n$*" >> "$MAILFILE"
+  [[ "$SHOWOPTIONS" == 'true' ]] && echo -e "\n==> Folgende Optionen wurden verwendet:\n$*" >> "$MAILFILE"
 
   # //TODO Profile anzeigen
 
   for i in "${!TARGETS[@]}" ; do
-    if [[ "$SHOWUSAGE" == "true" ]] ; then  # Anzeige ist abschltbar in der *.conf
+    if [[ "$SHOWUSAGE" == 'true' ]] ; then  # Anzeige ist abschltbar in der *.conf
       mapfile -t < <(df -Ph "${TARGETS[i]}")  # Ausgabe von df in Array (Zwei Zeilen)
       TARGETLINE=(${MAPFILE[1]}) ; TARGETDEV=${TARGETLINE[0]}  # Erstes Element ist das Device
       if [[ ! "${TARGETDEVS[@]}" =~ $TARGETDEV ]] ; then
@@ -838,7 +844,7 @@ if [[ -n "$MAILADRESS" ]] ; then
         echo -e "${MAPFILE[0]}\n${MAPFILE[1]}" >> "$MAILFILE"
       fi
     fi  # SHOWUSAGE
-    if [[ "$SHOWCONTENT" == "true" ]] ; then  # Auflistung ist abschltbar in der *.conf
+    if [[ "$SHOWCONTENT" == 'true' ]] ; then  # Auflistung ist abschltbar in der *.conf
       LOGDIR="${LOGFILES[i]%/*}" ; [[ "${LOGDIRS[@]}" =~ $LOGDIR ]] && continue
       LOGDIRS+=("$LOGDIR")
       { echo -e "\n==> Inhalt von ${LOGDIR}:"
@@ -854,12 +860,13 @@ if [[ -n "$MAILADRESS" ]] ; then
   done
 
   # eMail nur, wenn (a) MAILONLYERRORS=true und Fehler vorhanden sind oder (b) MAILONLYERRORS nicht true
-  if [[ ${#ERRLOGS[@]} -ge 1 && "$MAILONLYERRORS" == "true" || "$MAILONLYERRORS" != "true" ]] ; then
+  if [[ ${#ERRLOGS[@]} -ge 1 && "$MAILONLYERRORS" == 'true' || "$MAILONLYERRORS" != 'true' ]] ; then
     # eMail versenden
-    echo -e "$msgINF Sende eMail an ${MAILADRESS}..."
+    echo -e "$msgINF Sende eMail an ${MAILADRESS}…"
     case "$MAILPROG" in
       mpack)  # Sende Mail mit mpack via ssmtp
-        mpack -s "$SUBJECT" -d "$MAILFILE" "$ARCHIV" "$MAILADRESS"  # Kann "root" sein, wenn in sSMTP konfiguriert
+        iconv --from-code=UTF-8 --to-code=iso-8859-1 --output="${MAILFILE}.x" "$MAILFILE"  #  Damit Umlate richtig angezeigt werden
+        mpack -s "$SUBJECT" -d "${MAILFILE}.x" "$ARCHIV" "$MAILADRESS"  # Kann "root" sein, wenn in sSMTP konfiguriert
       ;;
       sendmail)  # Variante mit sendmail und uuencode
         mail_to_send="${TMPDIR}/~mail_to_send"
@@ -891,7 +898,7 @@ fi
 
 # Zuvor eingehängte(s) Sicherungsziel(e) wieder aushängen
 if [[ ${#UNMOUNT[@]} -ge 1 ]] ; then
-  echo -e "$msgINF Manuell eingehängte Sicherungsziele werden wieder ausgehängt..."
+  echo -e "$msgINF Manuell eingehängte Sicherungsziele werden wieder ausgehängt…"
   for volume in "${UNMOUNT[@]}" ; do
     umount --force "$volume"
   done
@@ -899,7 +906,7 @@ fi
 
 # --- POST_ACTION ---
 if [[ -n "$POST_ACTION" ]] ; then
-  echo -e "$msgINF Führe POST_ACTION-Befehl(e) aus..."
+  echo -e "$msgINF Führe POST_ACTION-Befehl(e) aus…"
   eval "$POST_ACTION" || { echo "Fehler beim Ausführen von \"${POST_ACTION}\"!" ; sleep 10 ;}
   unset -v 'POST_ACTION'
 fi
