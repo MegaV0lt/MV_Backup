@@ -11,7 +11,7 @@
 # Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170326
+VERSION=170426
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -38,7 +38,14 @@ msgINF='\e[42m \e[0m' ; msgWRN='\e[103m \e[0m'  # " " mit grünem/gelben Hinterg
 # --- FUNKTIONEN ---
 trap 'f_exit 3' SIGHUP SIGINT SIGQUIT SIGABRT  # Bei unerwarteten Ende (Strg-C) aufräumen
 set -o errtrace  # ERR Trap auch in Funktionen
-trap 'f_exit 2 "$BASH_COMMAND" "$LINENO" ${FUNCNAME:-$BASH_SOURCE} $?' ERR  # Bei Fehlern und nicht gefundenen Programmen
+
+f_errtrap() {  # ERR-Trap mit "ON" aktivieren, ansonsten nur ins ERRLOG
+  if [[ "${1^^}" == 'ON' ]] ; then
+    trap 'f_exit 2 "$BASH_COMMAND" "$LINENO" ${FUNCNAME:-$BASH_SOURCE} $?' ERR  # Bei Fehlern und nicht gefundenen Programmen
+  else
+    trap '[[ "$ERRLOG" ]] && echo "Befehl: $BASH_COMMAND Zeile: "$LINENO" Funktion: ${FUNCNAME:-$BASH_SOURCE} Fehler: $?" >> "$ERRLOG"' ERR  # ERR-Trap nur loggen
+  fi    
+}
 
 f_exit() {  # Beenden und aufräumen $1 = ExitCode
   local EXIT="${1:-0}"  # Wenn leer, dann 0
@@ -554,6 +561,7 @@ for PROFIL in "${P[@]}" ; do
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT[*]} --log-file=$LOG --exclude-from=$EXFROM --backup-dir=$BAK_DIR $SOURCE $R_TARGET" >> "$LOG"
         echo -e "$msgINF Starte Sicherung (rsync)…"
+        f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
         if [[ "$PROFIL" == 'customBak' ]] ; then  # Verzeichnisse wurden manuell übergeben
           rsync "${RSYNC_OPT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
             --backup-dir="$BAK_DIR" "${MAN_SOURCE[@]}" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
@@ -562,7 +570,7 @@ for PROFIL in "${P[@]}" ; do
             --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
         fi
         RC=$? ; [[ $RC -ne 0 ]] && { RSYNCRC+=("$RC") ; RSYNCPROF+=("$TITLE") ;}  # Profilname und Fehlercode merken
-
+        f_errtrap ON  # Err-Trap aktivieren
         [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden!
         if [[ -e "${TMPDIR}/.stopflag" ]] ; then
           FINISHEDTEXT='abgebrochen!'  # Platte voll!
@@ -591,8 +599,10 @@ for PROFIL in "${P[@]}" ; do
         # Mittels dryRun überprüfen, ob sich etwas geändert hat
         echo "Prüfe, ob es Änderungen zu $LASTBACKUP gibt…"
         TFL="$(mktemp "${TMPDIR}/tmp.rsync.XXXX")"
+        f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --dry-run --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" &> "$TFL"
+        f_errtrap ON  # Err-Trap aktivieren
         # Wenn es keine Unterschiede gibt, ist die 4. Zeile immer diese:
         # sent nn bytes  received nn bytes  n.nn bytes/sec
         mapfile -n 4 -t < "$TFL"  # Einlesen in Array (4 Zeilen)
@@ -609,6 +619,7 @@ for PROFIL in "${P[@]}" ; do
         # Sicherung mit rsync starten
         echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBAKDIR" >> "$LOG"
+        f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
         echo -e "$msgINF Starte Sicherung (rsync)…"
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" >/dev/null 2>> "$ERRLOG"
@@ -618,6 +629,7 @@ for PROFIL in "${P[@]}" ; do
           echo "Verschiebe $TMPBAKDIR nach $BACKUPDIR" >> "$LOG"
           mv "$TMPBAKDIR" "$BACKUPDIR" 2>> "$ERRLOG"
         fi
+        f_errtrap ON  # Err-Trap aktivieren
       fi
       unset -v 'NOT_CHANGED'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
     ;;
@@ -645,7 +657,7 @@ for PROFIL in "${P[@]}" ; do
         for i in "${!MAPFILE[@]}" ; do
           [[ "${MAPFILE[i]:0:1}" != '/' ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
         done
-
+        f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
         while read -r dir ; do  # Alle Ordner in der Quelle bis zur $maxdepth tiefe
           [[ -e "${TMPDIR}/.stopflag" ]] && break  # Platte voll!
           DIR_C="${dir//[^\/]}"  # Alle Zeichen außer "/" löschen
@@ -722,7 +734,7 @@ for PROFIL in "${P[@]}" ; do
             RSYNCRC+=("$RC") ; RSYNCPROF+=("${_JOBS[$pid]}")  # Profilname und Fehlercode merken
           fi
         done
-
+        f_errtrap ON  # Err-Trap aktivieren
         # Logs zusammenfassen (Jeder rsync-Prozess hat ein eigenes Log erstellt)
         [[ -f "$LOG" ]] && mv --force "$LOG" "${LOG}.old"  # Log schon vorhanden
         shopt -s nullglob  # Nichts tun, wenn nichts gefunden wird
