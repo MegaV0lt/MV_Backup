@@ -7,11 +7,10 @@
 #                                                                                       #
 # Alle Anpassungen zum Skript, kann man in der HISTORY und in der .conf nachlesen.      #
 # Wer sich erkenntlich zeigen möchte, kann mir gerne einen kleinen Betrag zukommen      #
-# lassen: => http://paypal.me/SteBlo                                                    #
-# Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR                                 #
+# lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170426
+VERSION=170511
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -172,8 +171,10 @@ f_settings() {
 }
 
 f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
+  local dt
+  printf -v dt '%(%F %R.%S)T' || dt="$(date +'%F %R.%S')"    
   echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
-  { echo "$(date +"%F %R.%S"): Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
+  { echo "${dt}: Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
       | xargs --null rm --recursive --force --verbose
     # Logdatei(en) löschen (Wenn $TITLE im Namen)
@@ -184,11 +185,12 @@ f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
 }
 
 f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Quelle $2=Ziel)
-  local file srcdir="$1" targetdir="$2"
+  local dt file srcdir="$1" targetdir="$2"
   [[ $# -ne 2 ]] && return 1  # Benötigt Quelle und Ziel als Parameter
   cd "$srcdir" || return 1    # Bei Fehler abbruch
+  printf -v dt '%(%F %R.%S)T' || dt="$(date +'%F %R.%S')"    
   echo "Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…"
-  echo "$(date +"%F %R.%S"): Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…" >> "$LOG"
+  echo "${dt}: Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…" >> "$LOG"
   # Dateien auf Quelle die älter als $DEL_OLD_SOURCE Tage sind einlesen
   mapfile -t < <(find "./" -type f -mtime +"$DEL_OLD_SOURCE")
   # Alte Dateien, die im Ziel sind auf der Quelle löschen
@@ -543,6 +545,7 @@ for PROFIL in "${P[@]}" ; do
   [[ ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" || f_exit 1 ;}
   [[ -e "${TMPDIR}/.stopflag" ]] && rm --force "${TMPDIR}/.stopflag" &>/dev/null
   unset -v 'FINISHEDTEXT' 'MFS_PID'
+  printf -v dt '%(%F %R)T' || dt="$(date +'%F %R')"  # Datum für die erste Zeile im Log
 
   case $MODE in
     N) # Normale Sicherung (inkl. customBak)
@@ -558,7 +561,7 @@ for PROFIL in "${P[@]}" ; do
       # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
       if [[ -z "$SKIP_FULL" ]] ; then
         # Sicherung mit rsync starten
-        echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
+        echo "$dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT[*]} --log-file=$LOG --exclude-from=$EXFROM --backup-dir=$BAK_DIR $SOURCE $R_TARGET" >> "$LOG"
         echo -e "$msgINF Starte Sicherung (rsync)…"
         f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
@@ -587,7 +590,9 @@ for PROFIL in "${P[@]}" ; do
       rm --recursive --force "${TARGET}/tmp_????-??-??*" 2>/dev/null
 
       # Zielverzeichnis ermitteln: Wenn erste Sicherung des Tages, dann ohne Uhrzeit
-      for TODAY in $(date +%Y-%m-%d) $(date +%Y-%m-%d_%H-%M) ; do
+      printf -v dt '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' \
+        || dt="$(date +'%Y-%m-%d') $(date +'%Y-%m-%d_%H-%M')"        
+      for TODAY in $dt ; do
         [[ ! -e "${TARGET}/${TODAY}" ]] && break
       done
       BACKUPDIR="${TARGET}/${TODAY}" ; TMPBAKDIR="${TARGET}/tmp_${TODAY}"
@@ -617,7 +622,7 @@ for PROFIL in "${P[@]}" ; do
       if [[ -z "$NOT_CHANGED" ]] ; then  # Keine Sicherung nötig?
         f_countdown_wait                 # Countdown vor dem Start anzeigen
         # Sicherung mit rsync starten
-        echo "$(date +'%F %R') - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
+        echo "$dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBAKDIR" >> "$LOG"
         f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
         echo -e "$msgINF Starte Sicherung (rsync)…"
@@ -780,7 +785,8 @@ done
 # --- eMail senden ---
 if [[ -n "$MAILADRESS" ]] ; then
   # Variablen
-  ARCH="Logs_$(date +'%F-%H%M').tar.xz"   # Archiv mit Datum und Zeit (kein :)
+  printf -v ARCH 'Logs_%(%F-%H%M)T.tar.xz' \
+    || ARCH="Logs_$(date +'%F-%H%M').tar.xz"  # Archiv mit Datum und Zeit (kein :)
   ARCHIV="${TMPDIR}/${ARCH}"              # Archiv mit Pfad
   MAILFILE="${TMPDIR}/~Mail.txt"          # Text für die eMail
   SUBJECT="Sicherungs-Bericht von $SELF_NAME auf $HOSTNAME"  # Betreff der Mail
