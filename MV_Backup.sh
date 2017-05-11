@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170511
+VERSION=170521
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -42,7 +42,7 @@ f_errtrap() {  # ERR-Trap mit "ON" aktivieren, ansonsten nur ins ERRLOG
   if [[ "${1^^}" == 'ON' ]] ; then
     trap 'f_exit 2 "$BASH_COMMAND" "$LINENO" ${FUNCNAME:-$BASH_SOURCE} $?' ERR  # Bei Fehlern und nicht gefundenen Programmen
   else
-    trap '[[ "$ERRLOG" ]] && echo "Befehl: $BASH_COMMAND Zeile: "$LINENO" Funktion: ${FUNCNAME:-$BASH_SOURCE} Fehler: $?" >> "$ERRLOG"' ERR  # ERR-Trap nur loggen
+    trap '[[ "$ERRLOG" ]] && echo "Fehler (${?:-x}) in Zeile "$LINENO" (${FUNCNAME:-$BASH_SOURCE}): $BASH_COMMAND" >> "$ERRLOG"' ERR  # ERR-Trap nur loggen
   fi    
 }
 
@@ -832,7 +832,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   if [[ ${#RSYNCRC[@]} -ge 1 && "$SHOWERRORS" == 'true' ]] ; then  # Profile mit Fehlern anzeigen
     echo -e '\n==> Profil(e) mit Fehler(n):' >> "$MAILFILE"
     for i in "${!RSYNCRC[@]}" ; do
-      echo "${RSYNCPROF[i]} (${RSYNCRC[i]})" >> "$MAILFILE"
+      echo "${RSYNCPROF[i]} (Rückgabecode ${RSYNCRC[i]})" >> "$MAILFILE"
     done
   fi  # SHOWERRORS
 
