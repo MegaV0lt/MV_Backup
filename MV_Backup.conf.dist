@@ -48,7 +48,7 @@ MFS_TIMEOUT=300  # Zeit in Sekunden
 # mpack (In Verbindung mit ssmtp), sendmail, sendEmail (http://j.mp/Xo69II),
 # mail oder email (http://j.mp/1LwMBut).
 # Spezialfall: Eigenes Mail-Programm (customMail) siehe auch CUSTOM_MAIL
-MAILPROG'mpack'   # mpack, sendmail, sendEmail, mail, email oder customMail
+MAILPROG='mpack'  # mpack, sendmail, sendEmail, mail, email oder customMail
 
 # Eigenes Mailprogramm inkl. kompletter Befehlszeile. Die Platzhalter MAILADRESS (Empfänger),
 # SUBJECT (Betreff), MAILFILE (Text der eMail) und ARCHIV (Logs) werden im Skript durch
