@@ -7,28 +7,30 @@
 ############################### ALLGEMEINE KONFIGURATION ################################
 
 # Optionen für rsync; Verzeichnisse dürfen nicht angegeben werden
-RSYNC_OPT=("-savPbh" "--delete" "--numeric-ids" "--stats")
+RSYNC_OPT=('-savPbh' '--delete' '--numeric-ids' '--stats')
 
 # Optionen für rsync im Modus "Snapshot"; Verzeichnisse dürfen nicht angegeben werden
-RSYNC_OPT_SNAPSHOT=("-av")           # Parameter für Modus Snapshot
+RSYNC_OPT_SNAPSHOT=('-av')  # Parameter für den Modus "Snapshot"
 
 # [optional] Einhängepunkt der externen Festplatte
 # Vor der Sicherung wird geprüft, ob die externe Festplatte eingebunden ist
 # Geeignet, wenn alle Profile das Sicherungsziel im selben Einhängepunkt haben
 # ACHTUNG: Bei verschiedenen Sicherungszielnen den Parameter mount[nr] in
 # der Profilkonfiguration verwenden
-#MOUNT="/mnt/usbdisk"                # Einhängepunkt des Sicherungsziels (Beispiel)
-#MOUNT="$(readlink -m /mnt/usbdisk)" # Falls Einhängepunkt ein Symlink ist
+#MOUNT='/mnt/usbdisk'     # Einhängepunkt des Sicherungsziels (Beispiel)
+#MOUNT='/mnt/remote_ftp'  # Einhängepunkt für externen FTP (Muss in der fstab definiert sein )
+#MOUNT="$(readlink -m /mnt/usbdisk)"  # Falls Einhängepunkt ein Symlink ist
 
 # Ordner, in den gelöschte Dateien kopiert werden (--backup-dir=)
 # Die Variable $TARGET, in der das Zielverzeichnis gespeichert ist, ist hierbei nützlich
-f_bak_dir() {                        # Letzter Ordner Format: JJJJ-MM-TT
-  BAK_DIR="${TARGET}/Geloeschte Dateien/$(date +%F)"
+f_bak_dir() {                        
+  printf -v DT_TODAY '%(%F)T'  # Letzter Ordner Format: JJJJ-MM-TT
+  BAK_DIR="${TARGET}/Geloeschte Dateien/${DT_TODAY}"
 }
 
 # [optional] Ordner in dem die Sicherung gespeichert wird. Vorgabe ist "_DATEIEN"
 # Der Ordner wird im Sicherungsziel ($TARGET) angelegt. Nur Name angeben; keine "/"
-#FILES_DIR="_DATEIEN"
+#FILES_DIR='_DATEIEN'
 
 # [optional] Zusätzlicher Suchpfad für das Skript, um Programme wie "find" oder
 # "curlftpfs" zu finden. Beispiel: PATH="/opt/bin:${PATH}" - Fügt "/opt/bin" am Anfang ein.
@@ -38,7 +40,7 @@ f_bak_dir() {                        # Letzter Ordner Format: JJJJ-MM-TT
 
 # [optional] Zeitabstand in Sekunden, in der der Hintergrundprozess (siehe minfree_bg[])
 # den freien Speicherplatz auf dem Ziel überprüft. Vorgabe ist 300 Sekunden (5 Minuten)
-MFS_TIMEOUT="300"  # Zeit in Sekunden
+MFS_TIMEOUT=300  # Zeit in Sekunden
 
 ############################### EMAIL KONFIGURATION #####################################
 
@@ -46,7 +48,7 @@ MFS_TIMEOUT="300"  # Zeit in Sekunden
 # mpack (In Verbindung mit ssmtp), sendmail, sendEmail (http://j.mp/Xo69II),
 # mail oder email (http://j.mp/1LwMBut).
 # Spezialfall: Eigenes Mail-Programm (customMail) siehe auch CUSTOM_MAIL
-MAILPROG="mpack"   # mpack, sendmail, sendEmail, mail, email oder customMail
+MAILPROG'mpack'   # mpack, sendmail, sendEmail, mail, email oder customMail
 
 # Eigenes Mailprogramm inkl. kompletter Befehlszeile. Die Platzhalter MAILADRESS (Empfänger),
 # SUBJECT (Betreff), MAILFILE (Text der eMail) und ARCHIV (Logs) werden im Skript durch
@@ -57,17 +59,17 @@ CUSTOM_MAIL=()
 # eMail-Empfänger (My@mail.de)
 # Nur ausfüllen, wenn man kein -e ... verwenden will (z.B. für crontab)
 # Es wird dann eine eMail versendet. Kann mit -e ... überschrieben werden
-MAILADRESS=""
+MAILADRESS=''
 
 # eMail nur bei Fehler versenden. Kann mit -f über die Befehlszeile angewendet werden
-#MAILONLYERRORS="true"  # Kommentarzeichen (#) entfernen zum aktivieren
+#MAILONLYERRORS='true'  # Kommentarzeichen (#) entfernen zum aktivieren
 
 ### Einstellungen für den eMail-Bericht ###
-SHOWOS="true"       # Zeige verwendetes Betriebssysten (/etc/os-release)
-SHOWOPTIONS="true"  # Zeige die verwendeten Optionen beim Skriptaufruf
-SHOWUSAGE="true"    # Zeige die Belegung des Sicherungsziels (df -Ph)
-SHOWCONTENT="true"  # Zeige Inhalt der Sichrungsziele (Oberste Ebene)
-SHOWERRORS="true"   # Zeige Profile mit Fehlern (rsync Fehlercode)
+SHOWOS='true'       # Zeige verwendetes Betriebssysten (/etc/os-release)
+SHOWOPTIONS='true'  # Zeige die verwendeten Optionen beim Skriptaufruf
+SHOWUSAGE='true'    # Zeige die Belegung des Sicherungsziels (df -Ph)
+SHOWCONTENT='true'  # Zeige Inhalt der Sichrungsziele (Oberste Ebene)
+SHOWERRORS='true'   # Zeige Profile mit Fehlern (rsync Fehlercode)
 
 # Max. Größe des gepackten Logarchivs in Byte, das per Mail gesendet wird.
 # Bei MAXLOGSIZE=0 wird kein Archiv angehängt. Betrifft nur das Archiv!
@@ -75,22 +77,22 @@ SHOWERRORS="true"   # Zeige Profile mit Fehlern (rsync Fehlercode)
 MAXLOGSIZE=$((1024*1024))     # 1 MB (Vorgabe)
 
 # Ausfüllen, wenn "sendEmail" verwendert wird (Diese Parameter werden von sendEmail benötigt)
-MAILSERVER=""        # Server (z.B. mail.gmx.net)
-MAILPORT=""          # Port (z.B. 25 oder 587 für TLS)
-MAILUSER=""          # z.B. My@mail.de
-MAILPASS=""          # z.B. v784hcnfd <- eMail-Passwort
-MAILSENDER=""        # Sendeadresse (z.B. My@mail.de)
-#USETLS="-o tls=yes" # TLS für die SMTP-Verbindung verwenden
+MAILSERVER=''        # Server (z.B. mail.gmx.net)
+MAILPORT=''          # Port (z.B. 25 oder 587 für TLS)
+MAILUSER=''          # z.B. My@mail.de
+MAILPASS=''          # z.B. v784hcnfd <- eMail-Passwort
+MAILSENDER=''        # Sendeadresse (z.B. My@mail.de)
+#USETLS='-o tls=yes' # TLS für die SMTP-Verbindung verwenden
 
 ############################### PRE- UND POST KONFIGURATION #############################
 
 # PRE_ACTION wird vor dem Sichern ausgeführt. Anführungszeichen müssen Maskiert (\")
 # werden. Beispiel: PRE_ACTION="echo \"PRE_ACTION\" startet hier!"
-PRE_ACTION=""
+PRE_ACTION=''
 
 # POST_ACTION wird nach dem Sichern ausgeführt. Anführungszeichen müssen Maskiert (\")
 # werden
-POST_ACTION=""
+POST_ACTION=''
 
 ########################### KONFIGURATION DER PROFILE (HILFE) ###########################
 #####   =>  Änderungen erst weiter unten ab "= = = Profil 1 = = =" vornehmen!  <=   #####
@@ -179,21 +181,21 @@ POST_ACTION=""
 nr=0  # <- Nicht löschen! Wird für die Nummerierung der Profile beötigt!
 # = = = Profil 1  = = =
 ((nr+=1))                     # Fortlaufende Profil-Nummer
-     title[nr]="VDR_Root"     # Profilname
-       arg[nr]="r"            # Argument (-p r)
-      mode[nr]=""             # Modus (Normal, Snapshot oder Multi)
-     mount[nr]=""             # Eigener Einhängepunkt
-    ftpsrc[nr]=""             # Quelle ist ein FTP
-    ftpmnt[nr]=""             # Einhängepunkt für die FTP-Quelle
-    source[nr]="/"
+     title[nr]='VDR_Root'     # Profilname
+       arg[nr]='r'            # Argument (-p r)
+      mode[nr]=''             # Modus (Normal, Snapshot oder Multi)
+     mount[nr]=''             # Eigener Einhängepunkt
+    ftpsrc[nr]=''             # Quelle ist ein FTP
+    ftpmnt[nr]=''             # Einhängepunkt für die FTP-Quelle
+    source[nr]='/'
     target[nr]="${mount[nr]:-$MOUNT}/_Backup/VDR/Root"
-   minfree[nr]=""             # In MegaByte (1024 KByte)
- skip_full[nr]=""             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
-   dry_run[nr]=""             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
-minfree_bg[nr]=""             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
+   minfree[nr]=''             # In MegaByte (1024 KByte)
+ skip_full[nr]=''             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
+   dry_run[nr]=''             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
+minfree_bg[nr]=''             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
        log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
     exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
- rsync_opt[nr]=""
+ rsync_opt[nr]=''
 cat > "${exfrom[nr]}" <<_EOF_
 dev/
 lost+found/
