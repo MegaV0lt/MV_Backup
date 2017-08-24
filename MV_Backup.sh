@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170612
+VERSION=170823
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -43,7 +43,7 @@ f_errtrap() {  # ERR-Trap mit "ON" aktivieren, ansonsten nur ins ERRLOG
     trap 'f_exit 2 "$BASH_COMMAND" "$LINENO" ${FUNCNAME:-$BASH_SOURCE} $?' ERR  # Bei Fehlern und nicht gefundenen Programmen
   else
     trap '[[ "$ERRLOG" ]] && echo "Fehler (${?:-x}) in Zeile "$LINENO" (${FUNCNAME:-$BASH_SOURCE}): $BASH_COMMAND" >> "$ERRLOG"' ERR  # ERR-Trap nur loggen
-  fi    
+  fi
 }
 
 f_exit() {  # Beenden und aufräumen $1 = ExitCode
@@ -76,7 +76,7 @@ f_mfs_kill() {  # Beenden der Hintergrundüberwachung
 
 f_remove_slash() {  # "/" am Ende entfernen. $1=Variablenname ohne $
   local __retval="$1" tmp="${!1}"  # $1=NAME, ${!1}=Inhalt
-  [[ ${#tmp} -ge 2 && "${tmp: -1}" == "/" ]] && tmp="${tmp%/}"
+  [[ ${#tmp} -ge 2 && "${tmp: -1}" == '/' ]] && tmp="${tmp%/}"
   eval "$__retval='$tmp'"  # Ergebis in Variable aus $1
 }
 
@@ -121,7 +121,7 @@ f_settings() {
         [[ -n "$_RSYNC_OPT" ]] && { RSYNC_OPT=("${_RSYNC_OPT[@]}") ; unset -v '_RSYNC_OPT' ;}
         [[ -n "$_RSYNC_OPT_SNAPSHOT" ]] && { RSYNC_OPT_SNAPSHOT=("${_RSYNC_OPT_SNAPSHOT[@]}") ; unset -v '_RSYNC_OPT_SNAPSHOT' ;}
         [[ -n "$_MOUNT" ]] && { MOUNT="$_MOUNT" ; unset -v '_MOUNT' ;}
-        [[ "$MOUNT" == "0" ]] && unset -v 'MOUNT'  # MOUNT war nicht gesetzt
+        [[ "$MOUNT" == '0' ]] && unset -v 'MOUNT'  # MOUNT war nicht gesetzt
         TITLE="${title[i]}"   ; ARG="${arg[i]}"       ; MODE="${mode[i]}"
         SOURCE="${source[i]}" ; FTPSRC="${ftpsrc[i]}" ; FTPMNT="${ftpmnt[i]}"
         TARGET="${target[i]}" ; LOG="${log[i]}"       ; EXFROM="${exfrom[i]}"
@@ -172,7 +172,7 @@ f_settings() {
 
 f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
   local dt
-  printf -v dt '%(%F %R.%S)T' || dt="$(date +'%F %R.%S')"    
+  printf -v dt '%(%F %R.%S)T' || dt="$(date +'%F %R.%S')"
   echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
   { echo "${dt}: Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
@@ -188,7 +188,7 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
   local dt file srcdir="$1" targetdir="$2"
   [[ $# -ne 2 ]] && return 1  # Benötigt Quelle und Ziel als Parameter
   cd "$srcdir" || return 1    # Bei Fehler abbruch
-  printf -v dt '%(%F %R.%S)T' || dt="$(date +'%F %R.%S')"    
+  printf -v dt '%(%F %R.%S)T' || dt="$(date +'%F %R.%S')"
   echo "Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…"
   echo "${dt}: Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…" >> "$LOG"
   # Dateien auf Quelle die älter als $DEL_OLD_SOURCE Tage sind einlesen
@@ -291,6 +291,7 @@ f_source_config() {  # Konfiguration laden
 
 # --- START ---
 f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
+SCRIPT_TIMING[0]=$SECONDS  # Startzeit merken (Sekunden)
 
 # --- AUSFÜHRBAR? ---
 if [[ ! -x "$SELF" ]] ; then
@@ -493,7 +494,7 @@ done
 NEEDPROGS=(find mktemp rsync "$NOTIFY" "$WALL")
 [[ -n "$FTPSRC" ]] && NEEDPROGS+=(curlftpfs)
 if [[ -n "$MAILADRESS" ]] ; then
-  [[ "${MAILPROG^^}" == "CUSTOMMAIL" ]] && { NEEDPROGS+=("${CUSTOM_MAIL[0]}") ;} || NEEDPROGS+=("$MAILPROG")
+  [[ "${MAILPROG^^}" == 'CUSTOMMAIL' ]] && { NEEDPROGS+=("${CUSTOM_MAIL[0]}") ;} || NEEDPROGS+=("$MAILPROG")
   [[ "$MAILPROG" == 'sendmail' ]] && NEEDPROGS+=(uuencode)
   NEEDPROGS+=(tar)
 fi
@@ -566,7 +567,6 @@ for PROFIL in "${P[@]}" ; do
         echo "$dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT[*]} --log-file=$LOG --exclude-from=$EXFROM --backup-dir=$BAK_DIR $SOURCE $R_TARGET" >> "$LOG"
         echo -e "$msgINF Starte Sicherung (rsync)…"
-        #f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
         if [[ "$PROFIL" == 'customBak' ]] ; then  # Verzeichnisse wurden manuell übergeben
           rsync "${RSYNC_OPT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
             --backup-dir="$BAK_DIR" "${MAN_SOURCE[@]}" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
@@ -575,7 +575,6 @@ for PROFIL in "${P[@]}" ; do
             --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
         fi
         RC=$? ; [[ $RC -ne 0 ]] && { RSYNCRC+=("$RC") ; RSYNCPROF+=("$TITLE") ;}  # Profilname und Fehlercode merken
-        #f_errtrap ON  # Err-Trap aktivieren
         [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden!
         if [[ -e "${TMPDIR}/.stopflag" ]] ; then
           FINISHEDTEXT='abgebrochen!'  # Platte voll!
@@ -592,9 +591,9 @@ for PROFIL in "${P[@]}" ; do
       rm --recursive --force "${TARGET}/tmp_????-??-??*" 2>/dev/null
 
       # Zielverzeichnis ermitteln: Wenn erste Sicherung des Tages, dann ohne Uhrzeit
-      printf -v dt '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' \
-        || dt="$(date +'%Y-%m-%d') $(date +'%Y-%m-%d_%H-%M')"        
-      for TODAY in $dt ; do
+      printf -v dt2 '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' \
+        || dt2="$(date +'%Y-%m-%d') $(date +'%Y-%m-%d_%H-%M')"
+      for TODAY in $dt2 ; do
         [[ ! -e "${TARGET}/${TODAY}" ]] && break
       done
       BACKUPDIR="${TARGET}/${TODAY}" ; TMPBAKDIR="${TARGET}/tmp_${TODAY}"
@@ -606,10 +605,8 @@ for PROFIL in "${P[@]}" ; do
         # Mittels dryRun überprüfen, ob sich etwas geändert hat
         echo "Prüfe, ob es Änderungen zu $LASTBACKUP gibt…"
         TFL="$(mktemp "${TMPDIR}/tmp.rsync.XXXX")"
-        #f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --dry-run --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" &> "$TFL"
-        #f_errtrap ON  # Err-Trap aktivieren
         # Wenn es keine Unterschiede gibt, ist die 4. Zeile immer diese:
         # sent nn bytes  received nn bytes  n.nn bytes/sec
         mapfile -n 4 -t < "$TFL"  # Einlesen in Array (4 Zeilen)
@@ -626,7 +623,6 @@ for PROFIL in "${P[@]}" ; do
         # Sicherung mit rsync starten
         echo "$dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBAKDIR" >> "$LOG"
-        #f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
         echo -e "$msgINF Starte Sicherung (rsync)…"
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" >/dev/null 2>> "$ERRLOG"
@@ -636,7 +632,6 @@ for PROFIL in "${P[@]}" ; do
           echo "Verschiebe $TMPBAKDIR nach $BACKUPDIR" >> "$LOG"
           mv "$TMPBAKDIR" "$BACKUPDIR" 2>> "$ERRLOG"
         fi
-        #f_errtrap ON  # Err-Trap aktivieren
       fi
       unset -v 'NOT_CHANGED'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
     ;;
@@ -664,7 +659,7 @@ for PROFIL in "${P[@]}" ; do
         for i in "${!MAPFILE[@]}" ; do
           [[ "${MAPFILE[i]:0:1}" != '/' ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
         done
-        #f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
+
         while read -r dir ; do  # Alle Ordner in der Quelle bis zur $maxdepth tiefe
           [[ -e "${TMPDIR}/.stopflag" ]] && break  # Platte voll!
           DIR_C="${dir//[^\/]}"  # Alle Zeichen außer "/" löschen
@@ -741,7 +736,6 @@ for PROFIL in "${P[@]}" ; do
             RSYNCRC+=("$RC") ; RSYNCPROF+=("${_JOBS[$pid]}")  # Profilname und Fehlercode merken
           fi
         done
-        #f_errtrap ON  # Err-Trap aktivieren
         # Logs zusammenfassen (Jeder rsync-Prozess hat ein eigenes Log erstellt)
         [[ -f "$LOG" ]] && mv --force "$LOG" "${LOG}.old"  # Log schon vorhanden
         shopt -s nullglob  # Nichts tun, wenn nichts gefunden wird
@@ -782,6 +776,7 @@ for PROFIL in "${P[@]}" ; do
   echo -e "  Weitere Informationen sind in der Datei:\n  \"${LOG}\" gespeichert.\n"
   [[ -s "$ERRLOG" ]] && echo -e "$msgINF Fehlermeldungen wurden in der Datei:\n  \"${ERRLOG}\" gespeichert.\n"
   unset -v 'RC' 'ERRTEXT'  # $RC und $ERRTEXT zurücksetzen
+  SCRIPT_TIMING[1]=$SECONDS  # Zeit nach dem ende von rsync (Sekunden)
 done
 
 # --- eMail senden ---
@@ -855,7 +850,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   # //TODO Profile anzeigen
 
   for i in "${!TARGETS[@]}" ; do
-    if [[ "$SHOWUSAGE" == 'true' ]] ; then  # Anzeige ist abschltbar in der *.conf
+    if [[ "$SHOWUSAGE" == 'true' ]] ; then  # Anzeige ist abschaltbar in der *.conf
       mapfile -t < <(df -Ph "${TARGETS[i]}")  # Ausgabe von df in Array (Zwei Zeilen)
       TARGETLINE=(${MAPFILE[1]}) ; TARGETDEV=${TARGETLINE[0]}  # Erstes Element ist das Device
       if [[ ! "${TARGETDEVS[@]}" =~ $TARGETDEV ]] ; then
@@ -864,7 +859,7 @@ if [[ -n "$MAILADRESS" ]] ; then
         echo -e "${MAPFILE[0]}\n${MAPFILE[1]}" >> "$MAILFILE"
       fi
     fi  # SHOWUSAGE
-    if [[ "$SHOWCONTENT" == 'true' ]] ; then  # Auflistung ist abschltbar in der *.conf
+    if [[ "$SHOWCONTENT" == 'true' ]] ; then  # Auflistung ist abschaltbar in der *.conf
       LOGDIR="${LOGFILES[i]%/*}" ; [[ "${LOGDIRS[@]}" =~ $LOGDIR ]] && continue
       LOGDIRS+=("$LOGDIR")
       { echo -e "\n==> Inhalt von ${LOGDIR}:"
@@ -879,13 +874,25 @@ if [[ -n "$MAILADRESS" ]] ; then
     fi  # SHOWCONTENT
   done
 
+  if [[ "$SHOWDURATION" == 'true' ]] ; then  # Auflistung ist abschaltbar in der *.conf
+    SCRIPT_TIMING[2]=$SECONDS  # Zeit nach der Statistik
+    SCRIPT_TIMING[10]=$((SCRIPT_TIMING[2] - SCRIPT_TIMING[0]))  # Gesamt
+    SCRIPT_TIMING[11]=$((SCRIPT_TIMING[1] - SCRIPT_TIMING[0]))  # rsync
+    SCRIPT_TIMING[12]=$((SCRIPT_TIMING[2] - SCRIPT_TIMING[1]))  # Statistik
+    { echo -e '\n==> Ausführungszeiten:'
+      echo "Skriptlaufzeit: $((SCRIPT_TIMING[10] / 60)) Minuten und $((SCRIPT_TIMING[10] % 60)) Sekunden"
+      echo "  Dauer Backup: $((SCRIPT_TIMING[11] / 60)) Minuten und $((SCRIPT_TIMING[11] % 60)) Sekunden"
+      echo "  Erstellen des Mailberichts: $((SCRIPT_TIMING[12] / 60)) Minuten und $((SCRIPT_TIMING[12] % 60)) Sekunden"
+    } >> "$MAILFILE"
+  fi  # SHOWDURATION
+
   # eMail nur, wenn (a) MAILONLYERRORS=true und Fehler vorhanden sind oder (b) MAILONLYERRORS nicht true
   if [[ ${#ERRLOGS[@]} -ge 1 && "$MAILONLYERRORS" == 'true' || "$MAILONLYERRORS" != 'true' ]] ; then
     # eMail versenden
     echo -e "$msgINF Sende eMail an ${MAILADRESS}…"
     case "$MAILPROG" in
       mpack)  # Sende Mail mit mpack via ssmtp
-        iconv --from-code=UTF-8 --to-code=iso-8859-1 --output="${MAILFILE}.x" "$MAILFILE"  #  Damit Umlate richtig angezeigt werden
+        iconv --from-code=UTF-8 --to-code=iso-8859-1 --output="${MAILFILE}.x" "$MAILFILE"  #  Damit Umlaute richtig angezeigt werden
         mpack -s "$SUBJECT" -d "${MAILFILE}.x" "$ARCHIV" "$MAILADRESS"  # Kann "root" sein, wenn in sSMTP konfiguriert
       ;;
       sendmail)  # Variante mit sendmail und uuencode
@@ -898,7 +905,7 @@ if [[ -n "$MAILADRESS" ]] ; then
           -o message-charset=utf-8 -s "${MAILSERVER}:${MAILPORT}" -xu "$MAILUSER" -xp "$MAILPASS" $USETLS
       ;;
       e[Mm]ail)  # Sende Mail mit eMail (https://github.com/deanproxy/eMail)
-        email -s "$SUBJECT" -attach "$ARCHIV" "$MAILADRESS" < "$MAILFILE"  # Die auführbare Datei ist 'email'
+        email -s "$SUBJECT" -attach "$ARCHIV" "$MAILADRESS" < "$MAILFILE"  # Die ausführbare Datei ist 'email'
       ;;
       mail)  # Sende Mail mit mail (http://j.mp/2kZlJdk)
         mail -s "$SUBJECT" -a "$ARCHIV" "$MAILADRESS" < "$MAILFILE"
