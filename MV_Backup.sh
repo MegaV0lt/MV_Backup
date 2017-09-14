@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170823
+VERSION=170914
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -308,11 +308,11 @@ if [[ -f "$PIDFILE" ]] ; then  # PID-Datei existiert
     f_exit 4                   # Beenden aber PID-Datei nicht löschen
   else  # Prozess nicht gefunden. PID-Datei überschreiben
     echo "$$" > "$PIDFILE" \
-      || { echo -e "$msgERR Die PID-Datei konnte nicht überschrieben werden!\e[0m" >&2 ; f_exit 1 ;}
+      || { echo -e "$msgWRN Die PID-Datei konnte nicht überschrieben werden!\e[0m" >&2 ;}
   fi
 else                           # PID-Datei existiert nicht. Neu anlegen
   echo "$$" > "$PIDFILE" \
-    || { echo -e "$msgERR Die PID-Datei konnte nicht erzeugt werden!\e[0m" >&2 ; f_exit 1 ;}
+    || { echo -e "$msgWRN Die PID-Datei konnte nicht erzeugt werden!\e[0m" >&2 ;}
 fi
 
 # --- KONFIGURATION LADEN ---
