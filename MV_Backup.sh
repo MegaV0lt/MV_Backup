@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170914
+VERSION=170915
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -55,7 +55,10 @@ f_exit() {  # Beenden und aufräumen $1 = ExitCode
     [[ -n "$MAILADRESS" ]] && echo 'Achtung: Es erfolgt kein eMail-Versand!'
   fi
   [[ "$EXIT" -eq 2 ]] && echo -e "$msgERR (${5:-x}) in Zeile $3 ($4):\e[0m\n$2\n" >&2
-  [[ "$EXIT" -ge 1 ]] && { set -o posix ; set ;} > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
+  if [[ "$EXIT" -ge 1 ]] ; then
+    set -o posix ; set  > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
+    [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript nicht mit root-Rechten gestartet!"
+  fi
   [[ -n "${exfrom[*]}" ]] && rm "${exfrom[@]}" 2>/dev/null
   [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR"  # Ordner für temporäre Dateien
   [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden
@@ -360,6 +363,7 @@ echo -e "\e[44m \e[0;1m RSYNC BACKUP\e[0m\e[0;32m => Version: ${VERSION}\e[0m by
 echo -e '\e[44m \e[0m Original: 2011 by JaiBee, http://www.321tux.de/'
 # Anzeigen, welche Konfiguration geladen wurde!
 echo -e "\e[46m \e[0m $CONFLOADED Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
+[[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript ohne root-Rechte gestartet!"
 
 OPTIND=1  # Wird benötigt, weil getops ein weiteres mal verwendet wird!
 optspec=':p:ac:m:sd:e:fh-:'
