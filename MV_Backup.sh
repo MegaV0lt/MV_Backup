@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=170915
+VERSION=171012
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -27,6 +27,7 @@ fi
 
 # --- INTERNE VARIABLEN ---
 SELF="$(readlink /proc/$$/fd/255)" || SELF="$0"  # Eigener Pfad (besseres $0)
+SELF_PATH="${SELF%/*}"                           # Pfad (Basename)
 SELF_NAME="${SELF##*/}"                          # skript.sh
 TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")"  # Ordner für temporäre Dateien
 declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Array's
@@ -353,7 +354,8 @@ fi
 
 # Wenn eine grafische Oberfläche vorhanden ist, wird u.a. "notify-send" für Benachrichtigungen verwendet, ansonsten immer "echo"
 if [[ -n "$DISPLAY" ]] ; then
-  NOTIFY='notify-send' ; WALL='wall'
+  [[ -e "${SELF_PATH}/notify-send-all" ]] && { NOTIFY="${SELF_PATH}/notify-send-all" ;} || NOTIFY='notify-send'
+  WALL='wall'
 else
   NOTIFY='echo'
 fi
@@ -884,9 +886,9 @@ if [[ -n "$MAILADRESS" ]] ; then
     SCRIPT_TIMING[11]=$((SCRIPT_TIMING[1] - SCRIPT_TIMING[0]))  # rsync
     SCRIPT_TIMING[12]=$((SCRIPT_TIMING[2] - SCRIPT_TIMING[1]))  # Statistik
     { echo -e '\n==> Ausführungszeiten:'
-      echo "Skriptlaufzeit: $((SCRIPT_TIMING[10] / 60)) Minuten und $((SCRIPT_TIMING[10] % 60)) Sekunden"
-      echo "  Dauer Backup: $((SCRIPT_TIMING[11] / 60)) Minuten und $((SCRIPT_TIMING[11] % 60)) Sekunden"
-      echo "  Erstellen des Mailberichts: $((SCRIPT_TIMING[12] / 60)) Minuten und $((SCRIPT_TIMING[12] % 60)) Sekunden"
+      echo "Skriptlaufzeit: $((SCRIPT_TIMING[10] / 60)) Minute(n) und $((SCRIPT_TIMING[10] % 60)) Sekunde(n)"
+      echo "  Dauer Backup: $((SCRIPT_TIMING[11] / 60)) Minute(n) und $((SCRIPT_TIMING[11] % 60)) Sekunde(n)"
+      echo "  Erstellen des Mailberichts: $((SCRIPT_TIMING[12] / 60)) Minute(n) und $((SCRIPT_TIMING[12] % 60)) Sekunde(n)"
     } >> "$MAILFILE"
   fi  # SHOWDURATION
 
