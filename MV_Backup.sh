@@ -27,7 +27,6 @@ fi
 
 # --- INTERNE VARIABLEN ---
 SELF="$(readlink /proc/$$/fd/255)" || SELF="$0"  # Eigener Pfad (besseres $0)
-SELF_PATH="${SELF%/*}"                           # Pfad (Basename)
 SELF_NAME="${SELF##*/}"                          # skript.sh
 TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")"  # Ordner für temporäre Dateien
 declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Array's
@@ -354,7 +353,7 @@ fi
 
 # Wenn eine grafische Oberfläche vorhanden ist, wird u.a. "notify-send" für Benachrichtigungen verwendet, ansonsten immer "echo"
 if [[ -n "$DISPLAY" ]] ; then
-  [[ -e "${SELF_PATH}/notify-send-all" ]] && { NOTIFY="${SELF_PATH}/notify-send-all" ;} || NOTIFY='notify-send'
+  type notify-send-all &>/dev/null && NOTIFY='notify-send-all' || NOTIFY='notify-send'
   WALL='wall'
 else
   NOTIFY='echo'
@@ -497,7 +496,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
 done
 
 # Sind die benötigen Programme installiert?
-NEEDPROGS=(find mktemp rsync "$NOTIFY" "$WALL")
+NEEDPROGS=(find mktemp rsync)
 [[ -n "$FTPSRC" ]] && NEEDPROGS+=(curlftpfs)
 if [[ -n "$MAILADRESS" ]] ; then
   [[ "${MAILPROG^^}" == 'CUSTOMMAIL' ]] && { NEEDPROGS+=("${CUSTOM_MAIL[0]}") ;} || NEEDPROGS+=("$MAILPROG")
