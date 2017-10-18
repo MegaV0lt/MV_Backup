@@ -831,7 +831,7 @@ for PROFIL in "${P[@]}" ; do
   cd "$EXTRA_TARGET" || exit 1
   mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null) ; RC=$?
   if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $((EXTRA_MAXINC)) ]] ; then
-    echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! ($((${#MAPFILE[@]}-1)))"
+    echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAX_INC})"
     if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
       # Sicherung in Ordner verschieben
       PREVNAME="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
@@ -852,8 +852,8 @@ for PROFIL in "${P[@]}" ; do
     # Prüfen, ob max. Sicherungen vorhanden sind
     if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
       mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null) ; RC=$?
-      if [[ $RC -eq 0 && "${#MAPFILE[@]}" -ge $((EXTRA_MAXBAK)) ]] ; then
-        echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${#MAPFILE[@]})"
+      if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $((EXTRA_MAXBAK)) ]] ; then
+        echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
         echo -e "$msgINF Lösche Sicherung ${MAPFILE[0]}"
         rm --recursive --force "${MAPFILE[0]}" >/dev/null
       fi
