@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171012
+VERSION=171018
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -121,7 +121,7 @@ f_settings() {
     for i in "${!arg[@]}" ; do  # Anzahl der vorhandenen Profile ermitteln
       if [[ "${arg[i]}" == "$PROFIL" ]] ; then  # Wenn das gewünschte Profil gefunden wurde
         # RSYNC_OPT, RSYNC_OPT_SNAPSHOT und MOUNT wieder herstelen
-        [[ -n "$_RSYNC_OPT" ]] && { RSYNC_OPT=("${_RSYNC_OPT[@]}") ; unset -v '_RSYNC_OPT' ;}
+        [[ -n "${_RSYNC_OPT[*]}" ]] && { RSYNC_OPT=("${_RSYNC_OPT[@]}") ; unset -v '_RSYNC_OPT' ;}
         [[ -n "$_RSYNC_OPT_SNAPSHOT" ]] && { RSYNC_OPT_SNAPSHOT=("${_RSYNC_OPT_SNAPSHOT[@]}") ; unset -v '_RSYNC_OPT_SNAPSHOT' ;}
         [[ -n "$_MOUNT" ]] && { MOUNT="$_MOUNT" ; unset -v '_MOUNT' ;}
         [[ "$MOUNT" == '0' ]] && unset -v 'MOUNT'  # MOUNT war nicht gesetzt
@@ -130,6 +130,10 @@ f_settings() {
         TARGET="${target[i]}" ; LOG="${log[i]}"       ; EXFROM="${exfrom[i]}"
         MINFREE="${minfree[i]}" ; SKIP_FULL="${skip_full[i]}" ; DRY_RUN="${dry_run[i]}"
         MINFREE_BG="${minfree_bg[i]}"
+        # Variablen für die Extra Sicherung
+        EXTRA_MOUNT="${extra_mount[i]}"   ; EXTRA_TARGET="${extra_target[i]}"
+        EXTRA_MAXBAK="${extra_maxbak[i]}" ; EXTRA_MAXINC="${extra_maxinc[i]}"
+        EXTRA_ARCHIV="${extra_archiv[i]}"
         # Erforderliche Werte prüfen, und ggf. Vorgaben setzen
         if [[ -z "$SOURCE" || -z "$TARGET" ]] ; then
           echo -e "$msgERR Quelle und/oder Ziel sind nicht konfiguriert!\e[0m" >&2
@@ -153,6 +157,9 @@ f_settings() {
         : "${TITLE:=Profil_${ARG}}"  # Wenn Leer, dann Profil_ gefolgt von Parameter
         : "${LOG:=${TMPDIR}/${SELF_NAME%.*}.log}"  # Temporäre Logdatei
         : "${FILES_DIR:=_DATEIEN}"                 # Vorgabe für Sicherungsordner
+        if [[ -n "$EXTRA_TARGET}" ]] ; then
+          : "${EXTRA_ARCHIV:=tar.xz}" ; : "${EXTRA_MAXBAK:=0}" ; : "${EXTRA_MAXINC:=7}"
+        fi
         # Bei mehreren Profilen müssen die Werte erst gesichert und später wieder zurückgesetzt werden
         [[ -n "${mount[i]}" ]] && { _MOUNT="${MOUNT:-0}" ; MOUNT="${mount[i]}" ;}  # Eigener Einhängepunkt
         case "${MODE^^}" in  # ${VAR^^} ergibt Großbuchstaben!
@@ -360,11 +367,19 @@ else
 fi
 
 tty --silent && clear
-echo -e "\e[44m \e[0;1m RSYNC BACKUP\e[0m\e[0;32m => Version: ${VERSION}\e[0m by MegaV0lt, http://j.mp/1TblNNj"
+echo -e "\e[44m \e[0;1m MV_Backup (rsync)\e[0m\e[0;32m => Version: ${VERSION}\e[0m by MegaV0lt, http://j.mp/1TblNNj"
 echo -e '\e[44m \e[0m Original: 2011 by JaiBee, http://www.321tux.de/'
 # Anzeigen, welche Konfiguration geladen wurde!
 echo -e "\e[46m \e[0m $CONFLOADED Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
 [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript ohne root-Rechte gestartet!"
+
+# Symlink /dev/fd prüfen (Fehlt bei manchen Systemen [BSD, OpenWRT, ...]) http://j.mp/2zwYkoG
+if [[ ! -L /dev/fd ]] ; then
+  echo -e "$msgWRN Der Symbolische Link \"/dev/fd -> /proc/self/fd\" fehlt!"
+  echo -e "$msgINF Erstelle Symbolischen Link \"/dev/fd\"…"
+  ln -sf /proc/self/fd /dev/fd || { echo -e "$msgERR Fehler beim erstellen des Symbolischen Links!\e[0m" >&2
+    exit 1; }
+fi
 
 OPTIND=1  # Wird benötigt, weil getops ein weiteres mal verwendet wird!
 optspec=':p:ac:m:sd:e:fh-:'
@@ -493,6 +508,10 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
          S) echo -e "$msgWRN Löschen von Quelldateien wird im Snapshot-Modus \e[1mnicht\e[0m unterstützt (--del-old-source)\e[0m" ;;
     esac
   fi
+  if [[ -n "$EXTRA_TARGET" ]] ; then
+    echo -e "\e[46m \e[0m Extra Sicherung nach:\e[1m\t${EXTRA_TARGET}\e[0m"
+    echo -e "\e[46m \e[0m Archivformat:\e[1m\t\t${EXTRA_ARCHIV}\e[0m"
+  fi
 done
 
 # Sind die benötigen Programme installiert?
@@ -544,6 +563,17 @@ for PROFIL in "${P[@]}" ; do
           || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${FTPMNT}\")" >&2 ; f_exit 1 ;}
         echo -e "OK.\nDie FTP-Quelle (${FTPSRC}) wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
         UMOUNT_FTP=1  # Nach Sicherung wieder aushängen
+      fi  # ! mountpoint
+    fi
+    # Festplatte (Ziel) für zusätzliche Sicherung eingebunden?
+    if [[ -n "$EXTRA_MOUNT" && "$EXTRA_TARGET" == "$EXTRA_MOUNT"* ]] ; then
+      if ! mountpoint -q "$EXTRA_MOUNT" ; then
+        echo -e -n "$msgINF Versuche zusätzliches Sicherungsziel (${EXTRA_MOUNT}) einzuhängen…"
+        mount "$EXTRA_MOUNT" &>/dev/null \
+          || { echo -e "\n$msgERR Das zusätzliche Sicherungsziel konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${EXTRA_MOUNT}\")" >&2
+               f_exit 1 ;}
+        echo -e "OK.\nDas zusätzliche Sicherungsziel (\"${EXTRA_MOUNT}\") wurde erfolgreich eingehängt."
+        UNMOUNT+=("$MOUNT")  # Nach Sicherung wieder aushängen (Einhängepunkt merken)
       fi  # ! mountpoint
     fi
   fi  # ! customBak
@@ -782,7 +812,60 @@ for PROFIL in "${P[@]}" ; do
   [[ -s "$ERRLOG" ]] && echo -e "$msgINF Fehlermeldungen wurden in der Datei:\n  \"${ERRLOG}\" gespeichert.\n"
   unset -v 'RC' 'ERRTEXT'  # $RC und $ERRTEXT zurücksetzen
   SCRIPT_TIMING[1]=$SECONDS  # Zeit nach dem ende von rsync (Sekunden)
-done
+
+  ### Zusätzliche Sicherung mit tar ###
+  [[ -z "$EXTRA_TARGET" ]] && continue  # Nicht aktiv!
+  if [[ "$MODE" == 'S' ]] ; then  # Nicht in Snapshot-Modus
+    echo "$msgERR Zusätzliche Sicherung wird im Snapshot-Modus nicht unterstützt!\e[0m" >&2
+    sleep 10 ; continue
+  else  # Zeitstempel, Backupname und Quellordner
+    EXTRA_NAME="${TARGET##*/}"  # root_fs [/mnt/Daten/_Backup/Darkwing-PC/root_fs]
+    EXTRA_SOURCE="${R_TARGET}"  # Original-Sicherung (mnt/Daten/_Backup/Darkwing-PC/root_fs/_DATEIEN)
+    printf -v dt '%(%y%m%d_%H%M-%s)T'  # Datum und Zeit (171017_1316-1508239007)
+  fi
+
+  # Zielordner suchen und erstellen
+  [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" || exit 1 ;}
+
+  # Testen, ob maximale inkrementelle Sicherungen vorhanden sind
+  cd "$EXTRA_TARGET" || exit 1
+  mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null) ; RC=$?
+  if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $((EXTRA_MAXINC)) ]] ; then
+    echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! ($((${#MAPFILE[@]}-1)))"
+    if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
+      # Sicherung in Ordner verschieben
+      PREVNAME="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
+      PREVNAME="${PREVNAME##*${EXTRA_NAME}_}"  # Archivname abschneiden
+      if [[ ! -d "$PREVNAME" ]] ; then
+        echo -e "$msgINF Verschiebe Sicherung nach $PREVNAME"
+        mkdir --parents "$PREVNAME"  # Ordner erstellen
+        mv --force ./*".$EXTRA_ARCHIV" "$PREVNAME"  # Alle Archive verschieben
+        rm './snapshot.file' >/dev/null  # Löschen, um eine Vollsicherung zu erhalten
+      else
+        echo "$msgWRN Verzeichnis $PREVNAME existiert bereits!" >&2
+      fi # ! -d $PREVNAME
+    else # EXTRA_MAXBAK -gt 0
+      echo -e "$msgINF Lösche letzte Sicherung!"
+      rm --force ./*".$EXTRA_ARCHIV" >/dev/null  # Alle Archive löschen
+      rm './snapshot.file' >/dev/null  # Löschen, um eine Vollsicherung zu erhalten
+    fi
+    # Prüfen, ob max. Sicherungen vorhanden sind
+    if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
+      mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null) ; RC=$?
+      if [[ $RC -eq 0 && "${#MAPFILE[@]}" -ge $((EXTRA_MAXBAK)) ]] ; then
+        echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${#MAPFILE[@]})"
+        echo -e "$msgINF Lösche Sicherung ${MAPFILE[0]}"
+        rm --recursive --force "${MAPFILE[0]}" >/dev/null
+      fi
+    fi # EXTRA_MAXBAK -gt 0
+  fi
+
+  # Sicherung mit tar
+  [[ -e "${EXTRA_TARGET}/snapshot.file" ]] && _INC='inkrementelle '
+  echo -e "$msgINF Erstelle zusätzliche ${_INC}Sicherung…"
+  tar --create --auto-compress --absolute-names --listed-incremental="${EXTRA_TARGET}/snapshot.file" \
+    --file="${EXTRA_TARGET}/${EXTRA_NAME}_${dt}.${EXTRA_ARCHIV}" "$EXTRA_SOURCE" >/dev/null
+done # for PROFILEset -x
 
 # --- eMail senden ---
 if [[ -n "$MAILADRESS" ]] ; then
