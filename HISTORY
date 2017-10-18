@@ -94,3 +94,6 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
 18.02.2017
  Neu:  Eigenes eMail-Programm kann nun definiert werden. Dazu muss die komplette Befehls-
        zeile angegeben werden. Platzhalter für Betreff usw. sind definiert. Siehe *.conf
+18.10.2017
+ Neu:  Eine zusätzliche Sicherung auf einem weiteren Datenträger kann eingerichtet werden.
+
