@@ -13,6 +13,7 @@ Weiterentwicklung des rsync-Backup-Skripts von 321tux.de. Zusätzliche Funktione
 - Sicherungsziel kann Profilabhängig definiert werden (mount[])
 - Experimenteller "Multi-rsync-Modus" kann in der .conf aktivert werden. Es werden für jeden Ordner im Stammverzeichnis einzelne rsync-Prozesse gestartet                                                     
 - Verschiedene Möglichkeiten den freien Platz auf dem Ziellaufwerk zu überwachen
+- Zusätzlich kann die Sicherung noch einmal mit tar auf einen weiteren Datenträger gesichert werden. Inkusive Versionskontrolle. Praktisch eine Sicherung²
 
 
 ![Hilfe](help.png)
