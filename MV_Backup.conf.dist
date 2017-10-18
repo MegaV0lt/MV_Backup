@@ -1,4 +1,4 @@
-###################### KONFIGURATION zum backup-321tux Backupskript #####################
+########################### KONFIGURATION zum MV_Backup Skript ##########################
 #
 # Alle Anpassungen zum Skript, kann man hier und im Skript am Anfang der Datei nachlesen.
 # Wer sich erkenntlich zeigen möchte, kann mir gerne einen kleinen Betrag zukommen lassen:
@@ -6,7 +6,7 @@
 #
 ############################### ALLGEMEINE KONFIGURATION ################################
 
-### Hinweis zum ausfüllen: Wenn Variablen ($)) verwendet werden,
+### Hinweis zum ausfüllen: Wenn Variablen ($) verwendet werden,
 ### dann in doppelten " ansonsten können einfache ' benutz werden
 
 # Optionen für rsync; Verzeichnisse dürfen nicht angegeben werden
@@ -182,7 +182,26 @@ POST_ACTION=''
 #tmp/
 #_EOF_
 
-nr=0  # Wird für die Nummerierung der Profile beötigt!
+# Konfiguration für die zusätzliche Sicherung ;-)
+# [optional] Einhängepunkt für zusätzliche Sicherung der Sicherung auf weiteren Datenträger
+# Siehe auch MOUNT
+#extra_mount[nr]=''
+
+# Zielverzeichnis. Wenn leer oder auskommentiert, wird keine extra Sicherung vorgenommen 
+#extra_target[nr]="${extra_mount[nr]}/mnt/Data2/Backup"
+
+# Anzahl der zusätzlichen Sicherungen, die behalten werden soll. 0 behält nur die aktuelle Version
+#extra_maxbak[nr]=  # Vorgabe it 0
+
+# Anzahl der inkrementellen Sicherungen. Wenn die Zahl erreicht ist, wird die Sicherung in ein
+# Unterverzeichnis verschoben und eine neue Verion erstellt. Begrenzt durch extra_maxbak[nr]
+#extra_maxinc[nr]=  # Vorgabe ist 7
+
+# Format für das Archiv (tar.gz, tar.xz, ...). Vorgabe ist 'tar.xz'
+#extra_archiv[nr]='tar.xz'
+
+
+nr=0  # Für die Nummerierung der Profile
 # = = = Profil 1  = = =
 ((nr+=1))                     # Fortlaufende Profil-Nummer
      title[nr]='VDR_Root'     # Profilname
@@ -252,11 +271,22 @@ _EOF_
 # cat > "${exfrom[nr]}" <<_EOF_
 #
 # _EOF_
+# extra_mount[nr]=''
+#extra_maxbak[nr]=
+#extra_maxinc[nr]=7
+#extra_target[nr]="${extra_mount[nr]}/mnt/Data2/Backup"
+#extra_archiv[nr]='tar.xz'
 
 ################################ ENDE DER KONFIGURATION #################################
 
 # Info: Wenn das Skript startet, werden die Werte aus den Arrays ausgelesen und in Variablen gespeichert.
-# title[nr]  ->  $TITLE   | arg[nr]  ->  $ARG         | mode[nr]  ->  $MODE
-# source[nr]  ->  $SOURCE | mount[nr]  ->  $MOUNT     | ftpsrc[nr]  ->  $FTPSRC
-# target[nr]  ->  $TARGET | minfree[nr]  ->  $MINFREE | dry_run[nr]  ->  $DRY_RUN
-# log[nr]  ->  $LOG       | exfrom[nr]  ->  $EXFROM   | rsync_opt[nr]  ->  $RSYNC_OPT
+# title[nr]  -> $TITLE  | arg[nr]     -> $ARG     | mode[nr]      -> $MODE
+# source[nr] -> $SOURCE | mount[nr]   -> $MOUNT   | ftpsrc[nr]    -> $FTPSRC
+# target[nr] -> $TARGET | minfree[nr] -> $MINFREE | dry_run[nr]   -> $DRY_RUN
+# log[nr]    -> $LOG    | exfrom[nr]  -> $EXFROM  | rsync_opt[nr] -> $RSYNC_OPT
+
+# Variablen für die zusätzliche Sicherung
+# extra_mount[nr]  -> $EXTRA_MOUNT  | extra_maxbak[nr] -> $EXTRA_MAXBAK
+# extra_maxinc[nr] -> $EXTRA_MAXINC | extra_target[nr] -> $EXTRA_TARGET
+# extra_archiv[nr] -> $EXTRA_ARCHIV
+
