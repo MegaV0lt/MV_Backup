@@ -821,7 +821,7 @@ for PROFIL in "${P[@]}" ; do
   else  # Zeitstempel, Backupname und Quellordner
     EXTRA_NAME="${TARGET##*/}"  # root_fs [/mnt/Daten/_Backup/Darkwing-PC/root_fs]
     EXTRA_SOURCE="${R_TARGET}"  # Original-Sicherung (mnt/Daten/_Backup/Darkwing-PC/root_fs/_DATEIEN)
-    printf -v dt '%(%Y%m%d_%H%M-%s)T'  # Datum und Zeit (20171017_1316-1508239007)
+    printf -v dt '%(%Y%m%d_%H%M%S)T'  # Datum und Zeit (20171017_131601)
   fi
   echo "Starte zusätzliche Sicherung nach $EXTRA_TARGET" >> "$LOG"
   # Zielordner suchen und erstellen
@@ -875,6 +875,7 @@ for PROFIL in "${P[@]}" ; do
     tar --create --auto-compress --absolute-names --listed-incremental="${EXTRA_TARGET}/snapshot.file" \
       --file="${EXTRA_TARGET}/${EXTRA_NAME}_${dt}.${EXTRA_ARCHIV}" "$EXTRA_SOURCE"
   } >> "$LOG"
+  SCRIPT_TIMING[1]=$SECONDS  # Zeit nach dem ende von tar (Sekunden)
 done # for PROFILEset -x
 
 # --- eMail senden ---
