@@ -373,7 +373,7 @@ echo -e '\e[44m \e[0m Original: 2011 by JaiBee, http://www.321tux.de/'
 echo -e "\e[46m \e[0m $CONFLOADED Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
 [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript ohne root-Rechte gestartet!"
 
-# Symlink /dev/fd prüfen (Fehlt bei manchen Systemen [BSD, OpenWRT, ...]) http://j.mp/2zwYkoG
+# Symlink /dev/fd fehlt bei manchen Systemen (BSD, OpenWRT, ...). http://j.mp/2zwYkoG
 if [[ ! -L /dev/fd ]] ; then
   echo -e "$msgWRN Der Symbolische Link \"/dev/fd -> /proc/self/fd\" fehlt!"
   echo -e "$msgINF Erstelle Symbolischen Link \"/dev/fd\"…"
@@ -599,7 +599,7 @@ for PROFIL in "${P[@]}" ; do
       # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
       if [[ -z "$SKIP_FULL" ]] ; then
         # Sicherung mit rsync starten
-        echo "$dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
+        echo "==> $dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT[*]} --log-file=$LOG --exclude-from=$EXFROM --backup-dir=$BAK_DIR $SOURCE $R_TARGET" >> "$LOG"
         echo -e "$msgINF Starte Sicherung (rsync)…"
         if [[ "$PROFIL" == 'customBak' ]] ; then  # Verzeichnisse wurden manuell übergeben
@@ -656,7 +656,7 @@ for PROFIL in "${P[@]}" ; do
       if [[ -z "$NOT_CHANGED" ]] ; then  # Keine Sicherung nötig?
         f_countdown_wait                 # Countdown vor dem Start anzeigen
         # Sicherung mit rsync starten
-        echo "$dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
+        echo "==> $dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
         echo "rsync ${RSYNC_OPT_SNAPSHOT[*]} --log-file=$LOG --exclude-from=$EXFROM --link-dest=$LASTBACKUP $SOURCE $TMPBAKDIR" >> "$LOG"
         echo -e "$msgINF Starte Sicherung (rsync)…"
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --log-file="$LOG" --exclude-from="$EXFROM" \
@@ -694,7 +694,7 @@ for PROFIL in "${P[@]}" ; do
         for i in "${!MAPFILE[@]}" ; do
           [[ "${MAPFILE[i]:0:1}" != '/' ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
         done
-
+        echo "==> $dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
         while read -r dir ; do  # Alle Ordner in der Quelle bis zur $maxdepth tiefe
           [[ -e "${TMPDIR}/.stopflag" ]] && break  # Platte voll!
           DIR_C="${dir//[^\/]}"  # Alle Zeichen außer "/" löschen
