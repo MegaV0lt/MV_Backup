@@ -451,9 +451,9 @@ for parameter in "${arg[@]}" ; do
 done
 
 # Prüfen ob alle Profile eindeutige Sicherungsziele verwenden (target[])
-for parameter in "${target[@]}" ; do
+for parameter in "${target[@]}" "${extra_target[@]}" ; do
   [[ -z "${_target[$parameter]+_}" ]] && { _target[$parameter]=1 ;} \
-    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => target[nr]=\"$parameter\" <= wird mehrfach verwendet\e[0m\n" >&2 ; f_exit 1 ;}
+    || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => \"$parameter\" <= wird mehrfach verwendet (target[nr] oder extra_target[nr])\e[0m\n" >&2 ; f_exit 1 ;}
 done
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
@@ -821,7 +821,7 @@ for PROFIL in "${P[@]}" ; do
   else  # Zeitstempel, Backupname und Quellordner
     EXTRA_NAME="${TARGET##*/}"  # root_fs [/mnt/Daten/_Backup/Darkwing-PC/root_fs]
     EXTRA_SOURCE="${R_TARGET}"  # Original-Sicherung (mnt/Daten/_Backup/Darkwing-PC/root_fs/_DATEIEN)
-    printf -v dt '%(%y%m%d_%H%M-%s)T'  # Datum und Zeit (171017_1316-1508239007)
+    printf -v dt '%(%Y%m%d_%H%M-%s)T'  # Datum und Zeit (20171017_1316-1508239007)
   fi
   echo "Starte zusätzliche Sicherung nach $EXTRA_TARGET" >> "$LOG"
   # Zielordner suchen und erstellen

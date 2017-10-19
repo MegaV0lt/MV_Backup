@@ -104,7 +104,8 @@ POST_ACTION=''
 # Bezeichnung des Profils; wird u.a. in der Hilfe angezeigt
 #title[nr]='Meine Sicherung'
 
-# Parameter, mit dem das jeweilige Profil gestartet wird (-p m)
+# Parameter, mit dem das jeweilige Profil gestartet wird (-p m). Muss eindeutig sein!
+# Erlaubt sind a-z. Nur einen Buchstaben verwenden!
 #arg[nr]='m'
 
 # [optional] Modus für die Sicherung. Parameter "Snapshot" verwenden um Snapshots zu erstellen
@@ -135,7 +136,7 @@ POST_ACTION=''
 #source[nr]='/var/log'  # Lokale Quelle
 
 # Zielverzeichnis. Mit "${mount[nr]:-$MOUNT}" wird $MOUNT verwendet, wenn
-# ${mount[nr]} leer ist
+# ${mount[nr]} leer ist. Muss eindeutig sein! Pfade nicht mehrfach verwenden!
 #target[nr]="${mount[nr]:-$MOUNT}/_Backup/VDR/Data"
 
 # [optional] Wert in MegaByte. Freier Platz, der auf dem Ziel mindestens frei
@@ -187,7 +188,8 @@ POST_ACTION=''
 # Siehe auch MOUNT
 #extra_mount[nr]=''
 
-# Zielverzeichnis. Wenn leer oder auskommentiert, wird keine extra Sicherung vorgenommen 
+# Zielverzeichnis. Wenn leer oder auskommentiert, wird keine extra Sicherung vorgenommen.
+# Muss eindeutig sein! Pfade nicht mehrfach verwenden! 
 #extra_target[nr]="${extra_mount[nr]}/mnt/Data2/Backup"
 
 # Anzahl der zusätzlichen Sicherungen, die behalten werden soll. 0 behält nur die aktuelle Version
