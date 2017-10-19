@@ -9,6 +9,10 @@
 ### Hinweis zum ausfüllen: Wenn Variablen ($) verwendet werden,
 ### dann in doppelten " ansonsten können einfache ' benutz werden
 
+# Datum in Variable speichern (Für Logs usw.)
+printf -v DT_TODAY '%(%F)T'  # JJJJ-MM-DD (2017-10-19)
+printf -v DT_NOW '%(%F_%H%M)T'  # JJJJ-MM-DD_HHMM (2017-10-19_1107)
+
 # Optionen für rsync; Verzeichnisse dürfen nicht angegeben werden
 RSYNC_OPT=('-savPbh' '--delete' '--numeric-ids' '--stats')
 
@@ -26,9 +30,8 @@ RSYNC_OPT_SNAPSHOT=('-av')  # Parameter für den Modus "Snapshot"
 
 # Ordner, in den gelöschte Dateien kopiert werden (--backup-dir=)
 # Die Variable $TARGET, in der das Zielverzeichnis gespeichert ist, ist hierbei nützlich
-f_bak_dir() {
-  printf -v DT_TODAY '%(%F)T'  # Letzter Ordner im Format: JJJJ-MM-TT
-  BAK_DIR="${TARGET}/Geloeschte Dateien/${DT_TODAY}"
+f_bak_dir() {  # Letzter Ordner im Format: JJJJ-MM-TT
+  BAK_DIR="${TARGET}/Geloeschte Dateien/${DT_TODAY}"  
 }
 
 # [optional] Ordner in dem die Sicherung gespeichert wird. Vorgabe ist "_DATEIEN"
@@ -43,7 +46,7 @@ f_bak_dir() {
 
 # [optional] Zeitabstand in Sekunden, in der der Hintergrundprozess (siehe minfree_bg[])
 # den freien Speicherplatz auf dem Ziel überprüft. Vorgabe ist 300 Sekunden (5 Minuten)
-MFS_TIMEOUT=300  # Zeit in Sekunden
+#MFS_TIMEOUT=300  # Zeit in Sekunden
 
 ############################### EMAIL KONFIGURATION #####################################
 
@@ -160,8 +163,9 @@ POST_ACTION=''
 #minfree_bg[nr]=100  # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
 
 # [optional] Logdatei, in der die Ausgabe von rsync gespeichert wird
-# Nützlich kann "$(date +%F)" sein, um separate Logs zu erhalten
-#log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
+# Nützlich kann "$DT_TODAY" oder "$DT_NOW" sein, um separate Logs zu erhalten
+# Format: DT_TODAY=JJJJ-MM-DD DT_NOW=JJJJ-MM-DD_HHMM
+#log[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.log"
 
 # Temporäre Datei (Standard: $(mktemp -t "tmp.rsync.XXXX")); muss nicht geändert werden
 # "${TMPDIR:-/tmp}" TMPDIR wird im Skript gesetzt, falls Leer, dann /tmp
@@ -218,7 +222,7 @@ nr=0  # Für die Nummerierung der Profile
  skip_full[nr]=''             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
    dry_run[nr]=''             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
 minfree_bg[nr]=''             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
-       log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
+       log[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.log"
     exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
  rsync_opt[nr]=''
 cat > "${exfrom[nr]}" <<_EOF_
@@ -246,7 +250,7 @@ _EOF_
  skip_full[nr]=''             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
    dry_run[nr]=''             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
 minfree_bg[nr]=''             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
-       log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
+       log[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.log"
     exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
  rsync_opt[nr]=''
 cat > "${exfrom[nr]}" <<_EOF_
@@ -268,7 +272,7 @@ _EOF_
 # skip_full[nr]=''             # Wenn gesetzt (1, yes, True, ...) wird das Profil übersprungen
 #   dry_run[nr]=''             # Wenn gesetzt wird ein Testlauf durchgeführt (Nur im Modus normal)
 #minfree_bg[nr]=''             # Mindestens frei auf dem Ziel (in MB). Wird alle 5 Minuten geprüft
-#    log[nr]="${target[nr]}/$(date +%F)_${title[nr]}.log"
+#    log[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.log"
 # exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"
 # cat > "${exfrom[nr]}" <<_EOF_
 #
