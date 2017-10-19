@@ -819,7 +819,8 @@ for PROFIL in "${P[@]}" ; do
     echo "$msgERR Zusätzliche Sicherung wird im Snapshot-Modus nicht unterstützt!\e[0m" >&2
     sleep 10 ; continue
   else  # Zeitstempel, Backupname und Quellordner
-    EXTRA_NAME="${TARGET##*/}"  # root_fs [/mnt/Daten/_Backup/Darkwing-PC/root_fs]
+    #EXTRA_NAME="${TARGET##*/}"  # root_fs [/mnt/Daten/_Backup/Darkwing-PC/root_fs]
+    EXTRA_NAME="${TITLE}"  # Profilname (Darkwing-PC_root)
     EXTRA_SOURCE="${R_TARGET}"  # Original-Sicherung (mnt/Daten/_Backup/Darkwing-PC/root_fs/_DATEIEN)
     printf -v dt '%(%Y%m%d_%H%M%S)T'  # Datum und Zeit (20171017_131601)
   fi
@@ -830,23 +831,23 @@ for PROFIL in "${P[@]}" ; do
   # Testen, ob maximale inkrementelle Sicherungen vorhanden sind
   cd "$EXTRA_TARGET" || exit 1
   mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null) ; RC=$?
-  if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $((EXTRA_MAXINC)) ]] ; then
+  if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXINC ]] ; then
     echo "Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})" >> "$LOG"
     echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})"
     if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
       # Sicherung in Ordner verschieben
-      PREVNAME="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
-      PREVNAME="${PREVNAME##*${EXTRA_NAME}_}"  # Archivname abschneiden
-      if [[ ! -d "$PREVNAME" ]] ; then
-        mkdir --parents "$PREVNAME"  # Ordner erstellen
-        echo -e "$msgINF Verschiebe Sicherung nach $PREVNAME"
-        { echo "Verschiebe Sicherung nach ${EXTRA_TARGET}/${PREVNAME}"
-          mv --force --verbose ./*".$EXTRA_ARCHIV" "$PREVNAME"  # Alle Archive verschieben
+      PREVDIR="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
+      #PREVDIR="${PREVDIR##*${EXTRA_NAME}_}"  # Archivname abschneiden
+      if [[ ! -d "$PREVDIR" ]] ; then
+        mkdir --parents "$PREVDIR"  # Ordner erstellen
+        echo -e "$msgINF Verschiebe Sicherung nach $PREVDIR"
+        { echo "Verschiebe Sicherung nach ${EXTRA_TARGET}/${PREVDIR}"
+          mv --force --verbose ./*".$EXTRA_ARCHIV" "$PREVDIR"  # Alle Archive verschieben
           rm --force --verbose './snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
         } >> "$LOG"
       else
-        echo "$msgWRN Verzeichnis $PREVNAME existiert bereits!" >&2
-      fi # ! -d $PREVNAME
+        echo "$msgWRN Verzeichnis $PREVDIR existiert bereits!" >&2
+      fi # ! -d $PREVDIR
     else # EXTRA_MAXBAK -gt 0
       echo -e "$msgINF Lösche letzte Sicherung! (EXTRA_MAXBAK=0)"
       { echo 'Lösche letzte Sicherung! (EXTRA_MAXBAK=0)'
@@ -857,7 +858,7 @@ for PROFIL in "${P[@]}" ; do
     # Prüfen, ob max. Sicherungen vorhanden sind
     if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
       mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null) ; RC=$?
-      if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $((EXTRA_MAXBAK)) ]] ; then
+      if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXBAK ]] ; then
         echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
         echo -e "$msgINF Lösche Sicherung ${MAPFILE[0]}"
         { echo "Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
