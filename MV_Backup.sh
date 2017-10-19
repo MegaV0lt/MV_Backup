@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171018
+VERSION=171019
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -823,7 +823,7 @@ for PROFIL in "${P[@]}" ; do
     EXTRA_SOURCE="${R_TARGET}"  # Original-Sicherung (mnt/Daten/_Backup/Darkwing-PC/root_fs/_DATEIEN)
     printf -v dt '%(%y%m%d_%H%M-%s)T'  # Datum und Zeit (171017_1316-1508239007)
   fi
-
+  echo "Starte zusätzliche Sicherung nach $EXTRA_TARGET" >> "$LOG"
   # Zielordner suchen und erstellen
   [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" || exit 1 ;}
 
@@ -831,23 +831,28 @@ for PROFIL in "${P[@]}" ; do
   cd "$EXTRA_TARGET" || exit 1
   mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null) ; RC=$?
   if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $((EXTRA_MAXINC)) ]] ; then
-    echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAX_INC})"
+    echo "Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})" >> "$LOG"
+    echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})"
     if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
       # Sicherung in Ordner verschieben
       PREVNAME="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
       PREVNAME="${PREVNAME##*${EXTRA_NAME}_}"  # Archivname abschneiden
       if [[ ! -d "$PREVNAME" ]] ; then
-        echo -e "$msgINF Verschiebe Sicherung nach $PREVNAME"
         mkdir --parents "$PREVNAME"  # Ordner erstellen
-        mv --force ./*".$EXTRA_ARCHIV" "$PREVNAME"  # Alle Archive verschieben
-        rm './snapshot.file' >/dev/null  # Löschen, um eine Vollsicherung zu erhalten
+        echo -e "$msgINF Verschiebe Sicherung nach $PREVNAME"
+        { echo "Verschiebe Sicherung nach ${EXTRA_TARGET}/${PREVNAME}"
+          mv --force --verbose ./*".$EXTRA_ARCHIV" "$PREVNAME"  # Alle Archive verschieben
+          rm --force --verbose './snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
+        } >> "$LOG"
       else
         echo "$msgWRN Verzeichnis $PREVNAME existiert bereits!" >&2
       fi # ! -d $PREVNAME
     else # EXTRA_MAXBAK -gt 0
-      echo -e "$msgINF Lösche letzte Sicherung!"
-      rm --force ./*".$EXTRA_ARCHIV" >/dev/null  # Alle Archive löschen
-      rm './snapshot.file' >/dev/null  # Löschen, um eine Vollsicherung zu erhalten
+      echo -e "$msgINF Lösche letzte Sicherung! (EXTRA_MAXBAK=0)"
+      { echo 'Lösche letzte Sicherung! (EXTRA_MAXBAK=0)'
+        rm --force --verbose ./*".$EXTRA_ARCHIV"  # Alle Archive löschen
+        rm --force --verbose './snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
+      }  >> "$LOG"
     fi
     # Prüfen, ob max. Sicherungen vorhanden sind
     if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
@@ -855,7 +860,10 @@ for PROFIL in "${P[@]}" ; do
       if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $((EXTRA_MAXBAK)) ]] ; then
         echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
         echo -e "$msgINF Lösche Sicherung ${MAPFILE[0]}"
-        rm --recursive --force "${MAPFILE[0]}" >/dev/null
+        { echo "Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
+          echo "Lösche Sicherung ${MAPFILE[0]}"
+          rm --recursive --force --verbose "${MAPFILE[0]}"
+        } >> "$LOG"
       fi
     fi # EXTRA_MAXBAK -gt 0
   fi
@@ -863,8 +871,10 @@ for PROFIL in "${P[@]}" ; do
   # Sicherung mit tar
   [[ -e "${EXTRA_TARGET}/snapshot.file" ]] && _INC='inkrementelle '
   echo -e "$msgINF Erstelle zusätzliche ${_INC}Sicherung…"
-  tar --create --auto-compress --absolute-names --listed-incremental="${EXTRA_TARGET}/snapshot.file" \
-    --file="${EXTRA_TARGET}/${EXTRA_NAME}_${dt}.${EXTRA_ARCHIV}" "$EXTRA_SOURCE" >/dev/null
+  { echo "Erstelle zusätzliche ${_INC}Sicherung…"
+    tar --create --auto-compress --absolute-names --listed-incremental="${EXTRA_TARGET}/snapshot.file" \
+      --file="${EXTRA_TARGET}/${EXTRA_NAME}_${dt}.${EXTRA_ARCHIV}" "$EXTRA_SOURCE"
+  } >> "$LOG"
 done # for PROFILEset -x
 
 # --- eMail senden ---
@@ -902,8 +912,7 @@ if [[ -n "$MAILADRESS" ]] ; then
     } > "$ARCHIV"
   fi
 
-  # Text der eMail erzeugen
-  echo -e "$msgINF Erzeuge Text für die eMail…"
+    echo -e "$msgINF Erzeuge Text für die eMail…"  # Text der eMail erzeugen
   { echo -e "Sicherungs-Bericht von $SELF_NAME [#${VERSION}] auf ${HOSTNAME}.\n"
     echo -n 'Die letzte Sicherung wurde beendet. '
     [[ ${#LOGFILES[@]} -ge 1 ]] && echo "Es wurde(n) ${#LOGFILES[@]} Log-Datei(en) erstellt."
@@ -969,7 +978,7 @@ if [[ -n "$MAILADRESS" ]] ; then
     SCRIPT_TIMING[12]=$((SCRIPT_TIMING[2] - SCRIPT_TIMING[1]))  # Statistik
     { echo -e '\n==> Ausführungszeiten:'
       echo "Skriptlaufzeit: $((SCRIPT_TIMING[10] / 60)) Minute(n) und $((SCRIPT_TIMING[10] % 60)) Sekunde(n)"
-      echo "  Dauer Backup: $((SCRIPT_TIMING[11] / 60)) Minute(n) und $((SCRIPT_TIMING[11] % 60)) Sekunde(n)"
+      echo "  Sicherung: $((SCRIPT_TIMING[11] / 60)) Minute(n) und $((SCRIPT_TIMING[11] % 60)) Sekunde(n)"
       echo "  Erstellen des Mailberichts: $((SCRIPT_TIMING[12] / 60)) Minute(n) und $((SCRIPT_TIMING[12] % 60)) Sekunde(n)"
     } >> "$MAILFILE"
   fi  # SHOWDURATION
