@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171019
+VERSION=171020
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -42,7 +42,7 @@ f_errtrap() {  # ERR-Trap mit "ON" aktivieren, ansonsten nur ins ERRLOG
   if [[ "${1^^}" == 'ON' ]] ; then
     trap 'f_exit 2 "$BASH_COMMAND" "$LINENO" ${FUNCNAME:-$BASH_SOURCE} $?' ERR  # Bei Fehlern und nicht gefundenen Programmen
   else
-    trap '[[ "$ERRLOG" ]] && echo "Fehler (${?:-x}) in Zeile "$LINENO" (${FUNCNAME:-$BASH_SOURCE}): $BASH_COMMAND" >> "$ERRLOG"' ERR  # ERR-Trap nur loggen
+    trap '[[ -n "$ERRLOG" ]] && echo "=> Info (Fehler $?) in Zeile "$LINENO" (${FUNCNAME:-$BASH_SOURCE}): $BASH_COMMAND" >> "$ERRLOG"' ERR  # ERR-Trap nur loggen
   fi
 }
 
@@ -456,6 +456,13 @@ for parameter in "${target[@]}" "${extra_target[@]}" ; do
     || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => \"$parameter\" <= wird mehrfach verwendet (target[nr] oder extra_target[nr])\e[0m\n" >&2 ; f_exit 1 ;}
 done
 
+#re='[[:alnum:]\.-]'
+#for parameter in "${title[@]}" ; do
+#  [[ ! $parameter =~ [^$re] ]] && { echo -e "$msgWRN Profilnamen mit Sonderzeichen gefunden!"
+#    echo "Profil: \"$parameter\" <= Enthält POSIX-Inkompatible Zeichen" >&2
+#    echo 'Bitte nur folgende POSIX-Kompatible Zeichenverwenden: A–Z a–z 0–9 . _ -' ; f_exit 1 ;}
+#done
+
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
 # [[ -n "$SHUTDOWN" && "$(whoami)" != "root" ]] && echo -e "$msgERR Zum automatischen Herunterfahren sind Root-Rechte erforderlich!\e[0m\n" && f_help
 
@@ -819,17 +826,16 @@ for PROFIL in "${P[@]}" ; do
     echo "$msgERR Zusätzliche Sicherung wird im Snapshot-Modus nicht unterstützt!\e[0m" >&2
     sleep 10 ; continue
   else  # Zeitstempel, Backupname und Quellordner
-    #EXTRA_NAME="${TARGET##*/}"  # root_fs [/mnt/Daten/_Backup/Darkwing-PC/root_fs]
     EXTRA_NAME="${TITLE}"  # Profilname (Darkwing-PC_root)
     EXTRA_SOURCE="${R_TARGET}"  # Original-Sicherung (mnt/Daten/_Backup/Darkwing-PC/root_fs/_DATEIEN)
     printf -v dt '%(%Y%m%d_%H%M%S)T'  # Datum und Zeit (20171017_131601)
   fi
   echo "Starte zusätzliche Sicherung nach $EXTRA_TARGET" >> "$LOG"
   # Zielordner suchen und erstellen
-  [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" || exit 1 ;}
+  [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" || f_exit 1 ;}
 
   # Testen, ob maximale inkrementelle Sicherungen vorhanden sind
-  cd "$EXTRA_TARGET" || exit 1
+  cd "$EXTRA_TARGET" || f_exit 1
   mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null) ; RC=$?
   if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXINC ]] ; then
     echo "Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})" >> "$LOG"
@@ -837,13 +843,12 @@ for PROFIL in "${P[@]}" ; do
     if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
       # Sicherung in Ordner verschieben
       PREVDIR="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
-      #PREVDIR="${PREVDIR##*${EXTRA_NAME}_}"  # Archivname abschneiden
       if [[ ! -d "$PREVDIR" ]] ; then
         mkdir --parents "$PREVDIR"  # Ordner erstellen
         echo -e "$msgINF Verschiebe Sicherung nach $PREVDIR"
         { echo "Verschiebe Sicherung nach ${EXTRA_TARGET}/${PREVDIR}"
           mv --force --verbose ./*".$EXTRA_ARCHIV" "$PREVDIR"  # Alle Archive verschieben
-          rm --force --verbose './snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
+          rm --force --verbose './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
         } >> "$LOG"
       else
         echo "$msgWRN Verzeichnis $PREVDIR existiert bereits!" >&2
@@ -852,7 +857,7 @@ for PROFIL in "${P[@]}" ; do
       echo -e "$msgINF Lösche letzte Sicherung! (EXTRA_MAXBAK=0)"
       { echo 'Lösche letzte Sicherung! (EXTRA_MAXBAK=0)'
         rm --force --verbose ./*".$EXTRA_ARCHIV"  # Alle Archive löschen
-        rm --force --verbose './snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
+        rm --force --verbose './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
       }  >> "$LOG"
     fi
     # Prüfen, ob max. Sicherungen vorhanden sind
@@ -860,24 +865,26 @@ for PROFIL in "${P[@]}" ; do
       mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null) ; RC=$?
       if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXBAK ]] ; then
         echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
-        echo -e "$msgINF Lösche Sicherung ${MAPFILE[0]}"
+        echo -e "$msgINF Lösche älteste Sicherung ${MAPFILE[0]}"
         { echo "Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
-          echo "Lösche Sicherung ${MAPFILE[0]}"
+          echo "Lösche älteste Sicherung ${MAPFILE[0]}"
           rm --recursive --force --verbose "${MAPFILE[0]}"
         } >> "$LOG"
       fi
     fi # EXTRA_MAXBAK -gt 0
   fi
 
-  # Sicherung mit tar
-  [[ -e "${EXTRA_TARGET}/snapshot.file" ]] && _INC='inkrementelle '
+  ### Zusätzliche Sicherung mit tar
+  [[ -e "${EXTRA_TARGET}/.snapshot.file" ]] && _INC='inkrementelle '
   echo -e "$msgINF Erstelle zusätzliche ${_INC}Sicherung…"
   { echo "Erstelle zusätzliche ${_INC}Sicherung…"
-    tar --create --auto-compress --absolute-names --listed-incremental="${EXTRA_TARGET}/snapshot.file" \
+    tar --create --auto-compress --absolute-names --preserve-permissions \
+      --listed-incremental="${EXTRA_TARGET}/.snapshot.file" \
       --file="${EXTRA_TARGET}/${EXTRA_NAME}_${dt}.${EXTRA_ARCHIV}" "$EXTRA_SOURCE"
   } >> "$LOG"
+  unset -v '_INC'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
   SCRIPT_TIMING[1]=$SECONDS  # Zeit nach dem ende von tar (Sekunden)
-done # for PROFILEset -x
+done # for PROFILE
 
 # --- eMail senden ---
 if [[ -n "$MAILADRESS" ]] ; then
@@ -976,7 +983,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   if [[ "$SHOWDURATION" == 'true' ]] ; then  # Auflistung ist abschaltbar in der *.conf
     SCRIPT_TIMING[2]=$SECONDS  # Zeit nach der Statistik
     SCRIPT_TIMING[10]=$((SCRIPT_TIMING[2] - SCRIPT_TIMING[0]))  # Gesamt
-    SCRIPT_TIMING[11]=$((SCRIPT_TIMING[1] - SCRIPT_TIMING[0]))  # rsync
+    SCRIPT_TIMING[11]=$((SCRIPT_TIMING[1] - SCRIPT_TIMING[0]))  # rsync/tar
     SCRIPT_TIMING[12]=$((SCRIPT_TIMING[2] - SCRIPT_TIMING[1]))  # Statistik
     { echo -e '\n==> Ausführungszeiten:'
       echo "Skriptlaufzeit: $((SCRIPT_TIMING[10] / 60)) Minute(n) und $((SCRIPT_TIMING[10] % 60)) Sekunde(n)"
