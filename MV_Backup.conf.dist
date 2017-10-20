@@ -104,7 +104,8 @@ POST_ACTION=''
 ########################### KONFIGURATION DER PROFILE (HILFE) ###########################
 #####   =>  Änderungen erst weiter unten ab "= = = Profil 1 = = =" vornehmen!  <=   #####
 
-# Bezeichnung des Profils; wird u.a. in der Hilfe angezeigt
+# Bezeichnung des Profils; wird u.a. in der Hilfe angezeigt. Bitte nur POSIX
+# kompatible Zeichen verwenden: A–Z a–z 0–9 . _ -
 #title[nr]='Meine Sicherung'
 
 # Parameter, mit dem das jeweilige Profil gestartet wird (-p m). Muss eindeutig sein!
