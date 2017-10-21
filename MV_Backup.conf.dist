@@ -168,6 +168,11 @@ POST_ACTION=''
 # Format: DT_TODAY=JJJJ-MM-DD DT_NOW=JJJJ-MM-DD_HHMM
 #log[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.log"
 
+# [optional] Zugriffskontrollisten (ACLs) zusätzlich sichern
+# Bei manchen Sicherungszielen werden möglicherweise die Dateizugriffsrechte nicht
+# gesetz. Wenn gesetzt, werden die Dateizugriffsrechte in einer Datei gesichert
+#save_acl[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.acs"
+
 # Temporäre Datei (Standard: $(mktemp -t "tmp.rsync.XXXX")); muss nicht geändert werden
 # "${TMPDIR:-/tmp}" TMPDIR wird im Skript gesetzt, falls Leer, dann /tmp
 #exfrom[nr]="$(mktemp "${TMPDIR:-/tmp}/tmp.rsync.XXXX")"

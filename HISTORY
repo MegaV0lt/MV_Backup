@@ -96,4 +96,9 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
        zeile angegeben werden. Platzhalter für Betreff usw. sind definiert. Siehe *.conf
 18.10.2017
  Neu:  Eine zusätzliche Sicherung auf einem weiteren Datenträger kann eingerichtet werden.
+21.10.2017
+ Neu: Zugriffskontrollisten (ACLs) zusätzlich sichern.
+      Bei manchen Sicherungszielen werden möglicherweise die Dateizugriffsrechte nicht
+      gesetz. Wenn gesetzt, werden die Dateizugriffsrechte in einer Datei gesichert
+      Beispiel: save_acl[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.acs"
 

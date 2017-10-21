@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171020
+VERSION=171021
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -127,9 +127,9 @@ f_settings() {
         [[ "$MOUNT" == '0' ]] && unset -v 'MOUNT'  # MOUNT war nicht gesetzt
         TITLE="${title[i]}"   ; ARG="${arg[i]}"       ; MODE="${mode[i]}"
         SOURCE="${source[i]}" ; FTPSRC="${ftpsrc[i]}" ; FTPMNT="${ftpmnt[i]}"
-        TARGET="${target[i]}" ; LOG="${log[i]}"       ; EXFROM="${exfrom[i]}"
-        MINFREE="${minfree[i]}" ; SKIP_FULL="${skip_full[i]}" ; DRY_RUN="${dry_run[i]}"
-        MINFREE_BG="${minfree_bg[i]}"
+        TARGET="${target[i]}" ; LOG="${log[i]}"       ; SAVE_ACL="${save_acl[i]}"
+        EXFROM="${exfrom[i]}" ; MINFREE="${minfree[i]}" ; SKIP_FULL="${skip_full[i]}"
+        DRY_RUN="${dry_run[i]}" ; MINFREE_BG="${minfree_bg[i]}"
         # Variablen für die Extra Sicherung
         EXTRA_MOUNT="${extra_mount[i]}"   ; EXTRA_TARGET="${extra_target[i]}"
         EXTRA_MAXBAK="${extra_maxbak[i]}" ; EXTRA_MAXINC="${extra_maxinc[i]}"
@@ -188,9 +188,12 @@ f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
       | xargs --null rm --recursive --force --verbose
     # Logdatei(en) löschen (Wenn $TITLE im Namen)
-    find "${LOG%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
-         -name "*${TITLE}*" ! -name "${LOG##*/}" -print0 \
-      | xargs --null rm --recursive --force --verbose
+    [[ -n "$LOG" ]] && find "${LOG%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
+      -name "*${TITLE}*" ! -name "${LOG##*/}" -print0 \
+        | xargs --null rm --recursive --force --verbose
+    [[ -n "$SAVE_ACL" ]] && find "${SAVE_ACL%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
+      -name "*${TITLE}*" ! -name "${SAVE_ACL##*/}" -print0 \
+        | xargs --null rm --recursive --force --verbose
   } >> "$LOG"
 }
 
@@ -519,6 +522,7 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
     echo -e "\e[46m \e[0m Extra Sicherung nach:\e[1m\t${EXTRA_TARGET}\e[0m"
     echo -e "\e[46m \e[0m Archivformat:\e[1m\t\t${EXTRA_ARCHIV}\e[0m"
   fi
+  [[ -n "$SAVE_ACL" ]] && echo -e "\e[46m \e[0m Datei-Zugriffskontrollisten:\e[1m ${SAVE_ACL}\e[0m"
 done
 
 # Sind die benötigen Programme installiert?
@@ -801,6 +805,80 @@ for PROFIL in "${P[@]}" ; do
     ;;
   esac
 
+  ### Sicherung der Datei-Zugriffskontrollisten (ACLs) ###
+  if [[ -n "$SAVE_ACL" ]] ; then
+  echo "Starte Sicherung der Dateizugriffskontrollisten (ACLs) nach: ${SAVE_ACL}" >> "$LOG"
+  echo -e "$msgINF Starte Sicherung der Dateizugriffskontrollisten (ACLs) nach:\n  \"${SAVE_ACL}\""
+    if type getfacl &>/dev/null ; then
+      getfacl --recursive "$SOURCE" > "$SAVE_ACL" 2> "$ERRLOG"
+    else
+      echo "$msgERR \"getfacl\" zum Sichern der Dateizugriffskontrollisten nicht gefunden!\e[0m" >&2
+    fi
+  fi
+
+  ### Zusätzliche Sicherung mit tar ###
+  if [[ -n "$EXTRA_TARGET" ]] ; then
+    if [[ "$MODE" == 'S' ]] ; then  # Nicht in Snapshot-Modus
+      echo "$msgERR Zusätzliche Sicherung wird im Snapshot-Modus nicht unterstützt!\e[0m" >&2
+      sleep 10
+    else
+      printf -v dt '%(%Y%m%d_%H%M%S)T'  # Datum und Zeit (20171017_131601)
+      echo "Starte zusätzliche Sicherung nach ${EXTRA_TARGET}…" >> "$LOG"
+      echo -e "$msgINF Starte zusätzliche Sicherung nach:\n  \"${EXTRA_TARGET}\""
+      # Zielordner suchen und erstellen
+      [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" || f_exit 1 ;}
+
+      # Prüfen, ob maximale inkrementelle Sicherungen vorhanden sind
+      cd "$EXTRA_TARGET" || f_exit 1
+      mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null) ; rc=$?
+      if [[ $rc -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXINC ]] ; then
+        echo "Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})" >> "$LOG"
+        echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})"
+        if [[ $EXTRA_MAXBAK -gt 0 ]] ; then  # Sicherung in Ordner verschieben
+          PREVDIR="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
+          if [[ ! -d "$PREVDIR" ]] ; then
+            mkdir --parents "$PREVDIR"  # Ordner erstellen
+            echo -e "$msgINF Verschiebe Sicherung nach $PREVDIR"
+            { echo "Verschiebe Sicherung nach ${EXTRA_TARGET}/${PREVDIR}"
+              mv --force --verbose ./*".$EXTRA_ARCHIV" "$PREVDIR"  # Alle Archive verschieben
+              rm --force --verbose './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
+            } >> "$LOG"
+          else
+            echo "$msgWRN Verzeichnis $PREVDIR existiert bereits!" >&2
+          fi  # ! -d $PREVDIR
+        else  # EXTRA_MAXBAK -gt 0
+          echo -e "$msgINF Lösche letzte Sicherung! (EXTRA_MAXBAK=0)"
+          { echo 'Lösche letzte Sicherung! (EXTRA_MAXBAK=0)'
+            rm --force --verbose ./*".$EXTRA_ARCHIV"  # Alle Archive löschen
+            rm --force --verbose './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
+          }  >> "$LOG"
+        fi
+        # Prüfen, ob max. Sicherungen vorhanden sind
+        if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
+          mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null) ; rc=$?
+          if [[ $rc -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXBAK ]] ; then
+            echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
+            echo -e "$msgINF Lösche älteste Sicherung ${MAPFILE[0]}"
+            { echo "Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
+              echo "Lösche älteste Sicherung ${MAPFILE[0]}"
+              rm --recursive --force --verbose "${MAPFILE[0]}"
+            } >> "$LOG"
+          fi
+        fi # EXTRA_MAXBAK -gt 0
+      fi
+
+      ### Zusätzliche Sicherung mit tar ###
+      [[ -e "${EXTRA_TARGET}/.snapshot.file" ]] && _INC='inkrementelle '
+      echo -e "$msgINF Erstelle zusätzliche ${_INC}Sicherung…"
+      { echo "Erstelle zusätzliche ${_INC}Sicherung…"
+        tar --create --auto-compress --absolute-names --preserve-permissions \
+          --listed-incremental="${EXTRA_TARGET}/.snapshot.file" \
+          --file="${EXTRA_TARGET}/${TITLE}_${dt}.${EXTRA_ARCHIV}" "$R_TARGET"
+      } >> "$LOG"
+      unset -v '_INC'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
+    fi  # MODE == S
+  fi  # -n EXTRA_TARGET
+
   if [[ -s "$ERRLOG" ]] ; then  # Existiert und ist größer als 0 Byte
     ERRLOGS+=("$ERRLOG")        # Fehler-Log merken
   else
@@ -818,73 +896,8 @@ for PROFIL in "${P[@]}" ; do
   echo -e "  Weitere Informationen sind in der Datei:\n  \"${LOG}\" gespeichert.\n"
   [[ -s "$ERRLOG" ]] && echo -e "$msgINF Fehlermeldungen wurden in der Datei:\n  \"${ERRLOG}\" gespeichert.\n"
   unset -v 'RC' 'ERRTEXT'  # $RC und $ERRTEXT zurücksetzen
-  SCRIPT_TIMING[1]=$SECONDS  # Zeit nach dem ende von rsync (Sekunden)
-
-  ### Zusätzliche Sicherung mit tar ###
-  [[ -z "$EXTRA_TARGET" ]] && continue  # Nicht aktiv!
-  if [[ "$MODE" == 'S' ]] ; then  # Nicht in Snapshot-Modus
-    echo "$msgERR Zusätzliche Sicherung wird im Snapshot-Modus nicht unterstützt!\e[0m" >&2
-    sleep 10 ; continue
-  else  # Zeitstempel, Backupname und Quellordner
-    EXTRA_NAME="${TITLE}"  # Profilname (Darkwing-PC_root)
-    EXTRA_SOURCE="${R_TARGET}"  # Original-Sicherung (mnt/Daten/_Backup/Darkwing-PC/root_fs/_DATEIEN)
-    printf -v dt '%(%Y%m%d_%H%M%S)T'  # Datum und Zeit (20171017_131601)
-  fi
-  echo "Starte zusätzliche Sicherung nach $EXTRA_TARGET" >> "$LOG"
-  # Zielordner suchen und erstellen
-  [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" || f_exit 1 ;}
-
-  # Testen, ob maximale inkrementelle Sicherungen vorhanden sind
-  cd "$EXTRA_TARGET" || f_exit 1
-  mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null) ; RC=$?
-  if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXINC ]] ; then
-    echo "Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})" >> "$LOG"
-    echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})"
-    if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
-      # Sicherung in Ordner verschieben
-      PREVDIR="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
-      if [[ ! -d "$PREVDIR" ]] ; then
-        mkdir --parents "$PREVDIR"  # Ordner erstellen
-        echo -e "$msgINF Verschiebe Sicherung nach $PREVDIR"
-        { echo "Verschiebe Sicherung nach ${EXTRA_TARGET}/${PREVDIR}"
-          mv --force --verbose ./*".$EXTRA_ARCHIV" "$PREVDIR"  # Alle Archive verschieben
-          rm --force --verbose './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
-        } >> "$LOG"
-      else
-        echo "$msgWRN Verzeichnis $PREVDIR existiert bereits!" >&2
-      fi # ! -d $PREVDIR
-    else # EXTRA_MAXBAK -gt 0
-      echo -e "$msgINF Lösche letzte Sicherung! (EXTRA_MAXBAK=0)"
-      { echo 'Lösche letzte Sicherung! (EXTRA_MAXBAK=0)'
-        rm --force --verbose ./*".$EXTRA_ARCHIV"  # Alle Archive löschen
-        rm --force --verbose './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
-      }  >> "$LOG"
-    fi
-    # Prüfen, ob max. Sicherungen vorhanden sind
-    if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
-      mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null) ; RC=$?
-      if [[ $RC -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXBAK ]] ; then
-        echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
-        echo -e "$msgINF Lösche älteste Sicherung ${MAPFILE[0]}"
-        { echo "Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
-          echo "Lösche älteste Sicherung ${MAPFILE[0]}"
-          rm --recursive --force --verbose "${MAPFILE[0]}"
-        } >> "$LOG"
-      fi
-    fi # EXTRA_MAXBAK -gt 0
-  fi
-
-  ### Zusätzliche Sicherung mit tar
-  [[ -e "${EXTRA_TARGET}/.snapshot.file" ]] && _INC='inkrementelle '
-  echo -e "$msgINF Erstelle zusätzliche ${_INC}Sicherung…"
-  { echo "Erstelle zusätzliche ${_INC}Sicherung…"
-    tar --create --auto-compress --absolute-names --preserve-permissions \
-      --listed-incremental="${EXTRA_TARGET}/.snapshot.file" \
-      --file="${EXTRA_TARGET}/${EXTRA_NAME}_${dt}.${EXTRA_ARCHIV}" "$EXTRA_SOURCE"
-  } >> "$LOG"
-  unset -v '_INC'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
-  SCRIPT_TIMING[1]=$SECONDS  # Zeit nach dem ende von tar (Sekunden)
 done # for PROFILE
+SCRIPT_TIMING[1]=$SECONDS  # Zeit nach der Sicherung mit rsync/tar/getfacl (Sekunden)
 
 # --- eMail senden ---
 if [[ -n "$MAILADRESS" ]] ; then

@@ -11,9 +11,10 @@ Weiterentwicklung des rsync-Backup-Skripts von 321tux.de. Zusätzliche Funktione
 - Versand der Logs per eMail (Optional nur bei Fehlern). Verschiedene Mailer werden unterstützt
 - eMail-Bericht mit Angaben zu Fehlern, Belegung der Sicherungen und der Sicherungsziele (Auflistung abschaltbar)
 - Sicherungsziel kann Profilabhängig definiert werden (mount[])
-- Experimenteller "Multi-rsync-Modus" kann in der .conf aktivert werden. Es werden für jeden Ordner im Stammverzeichnis einzelne rsync-Prozesse gestartet                                                     
+- Experimenteller "Multi-rsync-Modus" kann in der .conf aktivert werden. Es werden für jeden Ordner im Stammverzeichnis einzelne rsync-Prozesse gestartet
 - Verschiedene Möglichkeiten den freien Platz auf dem Ziellaufwerk zu überwachen
 - Zusätzlich kann die Sicherung noch einmal mit tar auf einen weiteren Datenträger gesichert werden. Inkusive Versionskontrolle. Praktisch eine Sicherung²
+- Dateizugriffskontrolllisten könenn zusätzlich gesichert werden. Praktisch, wenn das Sicherungsziel keine Zugriffsrechte unterstützt.
 
 
 ![Hilfe](help.png)
