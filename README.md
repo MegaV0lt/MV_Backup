@@ -14,7 +14,7 @@ Weiterentwicklung des rsync-Backup-Skripts von 321tux.de. Zusätzliche Funktione
 - Experimenteller "Multi-rsync-Modus" kann in der .conf aktivert werden. Es werden für jeden Ordner im Stammverzeichnis einzelne rsync-Prozesse gestartet
 - Verschiedene Möglichkeiten den freien Platz auf dem Ziellaufwerk zu überwachen
 - Zusätzlich kann die Sicherung noch einmal mit tar auf einen weiteren Datenträger gesichert werden. Inkusive Versionskontrolle. Praktisch eine Sicherung²
-- Dateizugriffskontrolllisten könenn zusätzlich gesichert werden. Praktisch, wenn das Sicherungsziel keine Zugriffsrechte unterstützt.
+- Dateizugriffskontrollisten könenn zusätzlich gesichert werden. Praktisch, wenn das Sicherungsziel keine Zugriffsrechte unterstützt.
 
 
 ![Hilfe](help.png)
@@ -34,7 +34,8 @@ Benötigt werden (U. a. Konfigurationsabhängig):
 - curlftpfs (Sicherung von FTP)
 - nproc (Im Paket coreutils; Für den Multi-rsync-Modus)
 - sendmail, uuencode, mpack, sendEmail, mail oder email (Für eMailversand; je nach Konfiguration)
-- tar (Um gepackte Log-Dateien per eMail zu senden)
+- tar (Zusätzliche Sicherung und um gepackte Log-Dateien per eMail zu senden)
+- getfacl (Dateizugriffskontrollisten (ACLS) sichern)
 - ...
 
 Die Konfiguration erfolgt über die .conf welche viele (hoffentlich) aussagekräftige Kommentare enthält.
