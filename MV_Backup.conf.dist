@@ -171,7 +171,7 @@ POST_ACTION=''
 # [optional] Zugriffskontrollisten (ACLs) zusätzlich sichern
 # Bei manchen Sicherungszielen werden möglicherweise die Dateizugriffsrechte nicht
 # gesetz. Wenn gesetzt, werden die Dateizugriffsrechte in einer Datei gesichert
-#save_acl[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.acs"
+#save_acl[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.acl"
 
 # Temporäre Datei (Standard: $(mktemp -t "tmp.rsync.XXXX")); muss nicht geändert werden
 # "${TMPDIR:-/tmp}" TMPDIR wird im Skript gesetzt, falls Leer, dann /tmp
