@@ -10,7 +10,7 @@
 # lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171021
+VERSION=171023
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -459,12 +459,15 @@ for parameter in "${target[@]}" "${extra_target[@]}" ; do
     || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => \"$parameter\" <= wird mehrfach verwendet (target[nr] oder extra_target[nr])\e[0m\n" >&2 ; f_exit 1 ;}
 done
 
-#re='[[:alnum:]\.-]'
+#shopt -s extglob #re='[[:alnum:]\.-]'
 #for parameter in "${title[@]}" ; do
-#  [[ ! $parameter =~ [^$re] ]] && { echo -e "$msgWRN Profilnamen mit Sonderzeichen gefunden!"
-#    echo "Profil: \"$parameter\" <= Enthält POSIX-Inkompatible Zeichen" >&2
+#  tmp="${parameter//+([^A-Za-z0-9._-]/}"
+#  echo "$parameter - $tmp"
+#  [[ -n $tmp ]] && { echo -e "$msgWRN Profilnamen mit Sonderzeichen gefunden!"
+#    echo "Profil: \"$parameter\" <= Enthält POSIX-Inkompatible Zeichen (${tmp})" >&2
 #    echo 'Bitte nur folgende POSIX-Kompatible Zeichenverwenden: A–Z a–z 0–9 . _ -' ; f_exit 1 ;}
 #done
+#exit
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
 # [[ -n "$SHUTDOWN" && "$(whoami)" != "root" ]] && echo -e "$msgERR Zum automatischen Herunterfahren sind Root-Rechte erforderlich!\e[0m\n" && f_help
@@ -812,7 +815,7 @@ for PROFIL in "${P[@]}" ; do
     if type getfacl &>/dev/null ; then
       getfacl --recursive "$SOURCE" > "$SAVE_ACL" 2> "$ERRLOG"
     else
-      echo "$msgERR \"getfacl\" zum Sichern der Dateizugriffskontrollisten nicht gefunden!\e[0m" >&2
+      echo -e "$msgERR \"getfacl\" zum Sichern der Dateizugriffskontrollisten nicht gefunden!\e[0m" >&2
     fi
   fi
 
