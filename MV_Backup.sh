@@ -57,7 +57,7 @@ f_exit() {  # Beenden und aufräumen $1 = ExitCode
   [[ "$EXIT" -eq 2 ]] && echo -e "$msgERR (${5:-x}) in Zeile $3 ($4):\e[0m\n$2\n" >&2
   if [[ "$EXIT" -ge 1 ]] ; then
     set -o posix ; set  > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
-    [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript nicht mit root-Rechten gestartet!"
+    [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript ohne root-Rechte gestartet!"
   fi
   [[ -n "${exfrom[*]}" ]] && rm "${exfrom[@]}" 2>/dev/null
   [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR"  # Ordner für temporäre Dateien
@@ -459,15 +459,20 @@ for parameter in "${target[@]}" "${extra_target[@]}" ; do
     || { echo -e "$msgERR Profilkonfiguration ist fehlerhaft! (Keine eindeutigen Sicherungsziele)\n  => \"$parameter\" <= wird mehrfach verwendet (target[nr] oder extra_target[nr])\e[0m\n" >&2 ; f_exit 1 ;}
 done
 
-#shopt -s extglob #re='[[:alnum:]\.-]'
-#for parameter in "${title[@]}" ; do
-#  tmp="${parameter//+([^A-Za-z0-9._-]/}"
-#  echo "$parameter - $tmp"
-#  [[ -n $tmp ]] && { echo -e "$msgWRN Profilnamen mit Sonderzeichen gefunden!"
-#    echo "Profil: \"$parameter\" <= Enthält POSIX-Inkompatible Zeichen (${tmp})" >&2
-#    echo 'Bitte nur folgende POSIX-Kompatible Zeichenverwenden: A–Z a–z 0–9 . _ -' ; f_exit 1 ;}
-#done
-#exit
+# Prüfen ob alle Profile POSIX-Kompatible Namen haben
+for parameter in "${title[@]}" ; do
+  LEN=$((${#parameter}-1)) ; i=0
+  while [[ $i -le $LEN ]] ; do
+    case "${parameter:$i:1}" in  # Zeichenweises Suchen
+      [A-Za-z0-9]|[._-]) ;;  # OK (A-Za-z0-9._-)
+        *) NOT_POSIX+=("$parameter") ; continue 2 ;;
+    esac ; ((i++))
+  done  # while
+done  # title[@]
+
+[[ -n "${NOT_POSIX[*]}" ]] && { echo -e "$msgWRN Profilnamen mit Sonderzeichen gefunden!" >&2
+    echo "Profil(e) mit POSIX-Inkompatiblen Zeichen: \"${NOT_POSIX[@]}\" <=" >&2
+    echo 'Bitte nur folgende POSIX-Kompatible Zeichenverwenden: A–Z a–z 0–9 . _ -' ; sleep 10 ;}
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
 # [[ -n "$SHUTDOWN" && "$(whoami)" != "root" ]] && echo -e "$msgERR Zum automatischen Herunterfahren sind Root-Rechte erforderlich!\e[0m\n" && f_help
