@@ -29,7 +29,7 @@ fi
 SELF="$(readlink /proc/$$/fd/255)" || SELF="$0"  # Eigener Pfad (besseres $0)
 SELF_NAME="${SELF##*/}"                          # skript.sh
 TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")"  # Ordner für temporäre Dateien
-declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Array's
+declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Einige Array's
 declare -A _arg _target _JOBS  # Array _JOBS wird für den Multi rsync-Modus benötigt
 msgERR='\e[1;41m FEHLER! \e[0;1m'  # Anzeige "FEHLER!"
 msgINF='\e[42m \e[0m' ; msgWRN='\e[103m \e[0m'  # " " mit grünem/gelben Hintergrund
@@ -303,7 +303,7 @@ f_source_config() {  # Konfiguration laden
 }
 
 # --- START ---
-[[ -e "/tmp/${SELF_NAME%.*}.log}" ]] && rm --force "/tmp/${SELF_NAME%.*}.log}"
+[[ -e "/tmp/${SELF_NAME%.*}.log}" ]] && rm --force "/tmp/${SELF_NAME%.*}.log}" >/dev/null
 f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
 SCRIPT_TIMING[0]=$SECONDS  # Startzeit merken (Sekunden)
 
@@ -446,6 +446,7 @@ if [[ -z "${P[*]}" ]] ; then
   else
     echo -e "$msgERR Es wurde kein Profil angegeben!\e[0m\n" >&2 ; f_help
   fi
+  [[ -z "${ARG[*]}" ]] && { echo -e "$msgERR arg[nr] darf nicht leer sein!\e[0m" >&2 ; f_exit 1 ;}
 fi
 
 # Prüfen ob alle Profile eindeutige Buchstaben haben (arg[])
@@ -472,7 +473,7 @@ for parameter in "${title[@]}" ; do
 done  # title[@]
 
 [[ -n "${NOT_POSIX[*]}" ]] && { echo -e "$msgWRN Profilnamen mit Sonderzeichen gefunden!" >&2
-    echo "Profil(e) mit POSIX-Inkompatiblen Zeichen: \"${NOT_POSIX[@]}\" <=" >&2
+    echo "Profil(e) mit POSIX-Inkompatiblen Zeichen: \"${NOT_POSIX[*]}\" <=" >&2
     echo 'Bitte nur folgende POSIX-Kompatible Zeichenverwenden: A–Z a–z 0–9 . _ -' ; sleep 10 ;}
 
 # Folgende Zeile auskommentieren, falls zum Herunterfahren des Computers Root-Rechte erforderlich sind
