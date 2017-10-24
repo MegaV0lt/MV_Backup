@@ -882,8 +882,9 @@ for PROFIL in "${P[@]}" ; do
       echo -e "$msgINF Erstelle zusätzliche ${_INC}Sicherung…"
       { echo "Erstelle zusätzliche ${_INC}Sicherung…"
         tar --create --auto-compress --absolute-names --preserve-permissions \
-          --listed-incremental="${EXTRA_TARGET}/.snapshot.file" \
-          --file="${EXTRA_TARGET}/${TITLE}_${dt}.${EXTRA_ARCHIV}" "$R_TARGET"
+          --listed-incremental="${EXTRA_TARGET}/.snapshot.file" --transform="s,.,$SOURCE," \
+          --file="${EXTRA_TARGET}/${TITLE}_${dt}.${EXTRA_ARCHIV}" \
+          --directory="$R_TARGET" .
       } >> "$LOG"
       unset -v '_INC'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
     fi  # MODE == S
