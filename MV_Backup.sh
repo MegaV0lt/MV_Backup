@@ -303,7 +303,7 @@ f_source_config() {  # Konfiguration laden
 }
 
 # --- START ---
-[[ -e "/tmp/${SELF_NAME%.*}.log}" ]] && rm --force "/tmp/${SELF_NAME%.*}.log}" >/dev/null
+[[ -e "/tmp/${SELF_NAME%.*}.log" || -e "/tmp/${SELF_NAME%.*}.env" ]] && rm --force "/tmp/${SELF_NAME%.*}{.log,.env}" &>/dev/null
 f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
 SCRIPT_TIMING[0]=$SECONDS  # Startzeit merken (Sekunden)
 
@@ -446,7 +446,7 @@ if [[ -z "${P[*]}" ]] ; then
   else
     echo -e "$msgERR Es wurde kein Profil angegeben!\e[0m\n" >&2 ; f_help
   fi
-  [[ -z "${ARG[*]}" ]] && { echo -e "$msgERR arg[nr] darf nicht leer sein!\e[0m" >&2 ; f_exit 1 ;}
+  [[ -z "${arg[*]}" ]] && { echo -e "$msgERR arg[nr] darf nicht leer sein!\e[0m" >&2 ; f_exit 1 ;}
 fi
 
 # Prüfen ob alle Profile eindeutige Buchstaben haben (arg[])
@@ -468,7 +468,7 @@ for parameter in "${title[@]}" ; do
     case "${parameter:$i:1}" in  # Zeichenweises Suchen
       [A-Za-z0-9]|[._-]) ;;  # OK (A-Za-z0-9._-)
         *) NOT_POSIX+=("$parameter") ; continue 2 ;;
-    esac ; ((i++))
+    esac ; ((i+=1))
   done  # while
 done  # title[@]
 
