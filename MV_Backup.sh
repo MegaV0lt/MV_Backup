@@ -303,7 +303,7 @@ f_source_config() {  # Konfiguration laden
 }
 
 # --- START ---
-[[-e "/tmp/${SELF_NAME%.*}.log}" ]] && rm --force "/tmp/${SELF_NAME%.*}.log}"
+[[ -e "/tmp/${SELF_NAME%.*}.log}" ]] && rm --force "/tmp/${SELF_NAME%.*}.log}"
 f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
 SCRIPT_TIMING[0]=$SECONDS  # Startzeit merken (Sekunden)
 
