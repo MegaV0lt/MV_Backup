@@ -5,12 +5,12 @@
 # Forum: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk                                  #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
 #                                                                                       #
-# Alle Anpassungen zum Skript, kann man in der HISTORY und in der .conf nachlesen.      #
-# Wer sich erkenntlich zeigen möchte, kann mir gerne einen kleinen Betrag zukommen      #
-# lassen: => http://paypal.me/SteBlo  Der Betrag kann frei gewählt werden.              #
+# Alle Anpassungen zum Skript, kann man in der HISTORY und in der .conf nachlesen. Wer  #
+# sich erkenntlich zeigen möchte, kann mir gerne einen kleinen Betrag zukommen lassen:  #
+# => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171023
+VERSION=171024
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -42,7 +42,7 @@ f_errtrap() {  # ERR-Trap mit "ON" aktivieren, ansonsten nur ins ERRLOG
   if [[ "${1^^}" == 'ON' ]] ; then
     trap 'f_exit 2 "$BASH_COMMAND" "$LINENO" ${FUNCNAME:-$BASH_SOURCE} $?' ERR  # Bei Fehlern und nicht gefundenen Programmen
   else
-    trap '[[ -n "$ERRLOG" ]] && echo "=> Info (Fehler $?) in Zeile "$LINENO" (${FUNCNAME:-$BASH_SOURCE}): $BASH_COMMAND" >> "$ERRLOG"' ERR  # ERR-Trap nur loggen
+    trap 'echo "=> Info (Fehler $?) in Zeile "$LINENO" (${FUNCNAME:-$BASH_SOURCE}): $BASH_COMMAND" >> "${ERRLOG:-/tmp/${SELF_NAME%.*}.log}"' ERR  # ERR-Trap nur loggen
   fi
 }
 
@@ -59,10 +59,10 @@ f_exit() {  # Beenden und aufräumen $1 = ExitCode
     set -o posix ; set  > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
     [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript ohne root-Rechte gestartet!"
   fi
-  [[ -n "${exfrom[*]}" ]] && rm "${exfrom[@]}" 2>/dev/null
-  [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR"  # Ordner für temporäre Dateien
+  [[ -n "${exfrom[*]}" ]] && rm "${exfrom[@]}" &>/dev/null
+  [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR" &>/dev/null  # Ordner für temporäre Dateien
   [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden
-  [[ "$EXIT" -ne 4 ]] && rm --force "$PIDFILE" 2>/dev/null  # PID-Datei entfernen
+  [[ "$EXIT" -ne 4 ]] && rm --force "$PIDFILE" &>/dev/null  # PID-Datei entfernen
   exit "$EXIT"
 }
 
@@ -303,6 +303,7 @@ f_source_config() {  # Konfiguration laden
 }
 
 # --- START ---
+[[-e "/tmp/${SELF_NAME%.*}.log}" ]] && rm --force "/tmp/${SELF_NAME%.*}.log}"
 f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
 SCRIPT_TIMING[0]=$SECONDS  # Startzeit merken (Sekunden)
 
@@ -599,7 +600,7 @@ for PROFIL in "${P[@]}" ; do
 
   ERRLOG="${LOG%.*}.err.log"  # Fehlerlog im Logverzeichnis der Sicherung
   # Ggf. Zielverzeichnis erstellen
-  [[ ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" || f_exit 1 ;}
+  [[ ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" >/dev/null || f_exit 1 ;}
   [[ -e "${TMPDIR}/.stopflag" ]] && rm --force "${TMPDIR}/.stopflag" &>/dev/null
   unset -v 'FINISHEDTEXT' 'MFS_PID'
   printf -v dt '%(%F %R)T' || dt="$(date +'%F %R')"  # Datum für die erste Zeile im Log
@@ -607,7 +608,7 @@ for PROFIL in "${P[@]}" ; do
   case $MODE in
     N) # Normale Sicherung (inkl. customBak)
       # Ggf. Verzeichnis für gelöschte Dateien erstellen
-      [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" || f_exit 1 ;}
+      [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" >/dev/null || f_exit 1 ;}
       R_TARGET="${TARGET}/${FILES_DIR}"  # Ordner für die gesicherten Dateien
 
       f_countdown_wait  # Countdown vor dem Start anzeigen
@@ -642,7 +643,7 @@ for PROFIL in "${P[@]}" ; do
     ;;
     S) # Snapshot Sicherung
       # Temporäre Verzeichnisse, die von fehlgeschlagenen Sicherungen noch vorhanden sind löschen
-      rm --recursive --force "${TARGET}/tmp_????-??-??*" 2>/dev/null
+      rm --recursive --force "${TARGET}/tmp_????-??-??*" &>/dev/null
 
       # Zielverzeichnis ermitteln: Wenn erste Sicherung des Tages, dann ohne Uhrzeit
       printf -v dt2 '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' \
@@ -669,7 +670,7 @@ for PROFIL in "${P[@]}" ; do
           echo "==> Aktuelle Sicherung: $LASTBACKUP"
           NOT_CHANGED=1  # Keine Sicherung nötig. Merken für später
         fi
-        rm "$TFL" 2>/dev/null
+        rm "$TFL" &>/dev/null
       fi
 
       if [[ -z "$NOT_CHANGED" ]] ; then  # Keine Sicherung nötig?
@@ -684,14 +685,14 @@ for PROFIL in "${P[@]}" ; do
           RSYNCRC+=("$RC") ; RSYNCPROF+=("$TITLE")  # Profilname und Fehlercode merken
         else                                        # Wenn Sicherung erfolgreich, Verzeichnis umbenennen
           echo "Verschiebe $TMPBAKDIR nach $BACKUPDIR" >> "$LOG"
-          mv "$TMPBAKDIR" "$BACKUPDIR" 2>> "$ERRLOG"
+          mv "$TMPBAKDIR" "$BACKUPDIR" >/dev/null 2>> "$ERRLOG"
         fi
       fi
       unset -v 'NOT_CHANGED'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
     ;;
     M) # Multi rsync (Experimentell)! Quelle: www.krazyworks.com/making-rsync-faster
       # Ggf. Verzeichnis für gelöschte Dateien erstellen
-      [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" || f_exit 1 ;}
+      [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" >/dev/null || f_exit 1 ;}
 
       # Variablen depth, TARGET, maxdthreads und sleeptime definieren
       depth=1 ; cnt=0 ; sleeptime=5  # Wartezeit zum prüfen der gleichzeitig laufenden rsync-Prozesse
@@ -709,7 +710,7 @@ for PROFIL in "${P[@]}" ; do
       # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
       if [[ -z "$SKIP_FULL" ]] ; then
         mapfile -t < "$EXFROM"  # Ausschlussliste einlesen
-        mv --force "$EXFROM" "${_EXFROM:=${EXFROM}.$RANDOM}"  # Ausschlussliste für ./
+        mv --force "$EXFROM" "${_EXFROM:=${EXFROM}.$RANDOM}" >/dev/null  # Ausschlussliste für ./
         for i in "${!MAPFILE[@]}" ; do
           [[ "${MAPFILE[i]:0:1}" != '/' ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
         done
@@ -740,7 +741,7 @@ for PROFIL in "${P[@]}" ; do
 
             if [[ ! -d "${R_TARGET}/${subfolder}" ]] ; then
               # Zielordner erstellen und Rechte/Eigentümer von Quelle übernehmen
-              mkdir --parents "${R_TARGET}/${subfolder}"
+              mkdir --parents "${R_TARGET}/${subfolder}" >/dev/null
               chown --reference="${SOURCE}/${subfolder}" "${R_TARGET}/${subfolder}"
               chmod --reference="${SOURCE}/${subfolder}" "${R_TARGET}/${subfolder}"
             fi
@@ -784,14 +785,14 @@ for PROFIL in "${P[@]}" ; do
 
         # Warten bis alle rsync-Prozesse beendet sind!
         for pid in "${!_JOBS[@]}" ; do
-          wait "$pid" ; RC="$?"  # wait liefert $? auch für bereits beendete Prozesse
+          wait "$pid" ; RC=$?  # wait liefert $? auch für bereits beendete Prozesse
           if [[ $RC -ne 0 ]] ; then
             echo -e "[${pid}] Beendet mit Fehler: ${RC}\n${_JOBS[$pid]}"
             RSYNCRC+=("$RC") ; RSYNCPROF+=("${_JOBS[$pid]}")  # Profilname und Fehlercode merken
           fi
         done
         # Logs zusammenfassen (Jeder rsync-Prozess hat ein eigenes Log erstellt)
-        [[ -f "$LOG" ]] && mv --force "$LOG" "${LOG}.old"  # Log schon vorhanden
+        [[ -f "$LOG" ]] && mv --force "$LOG" "${LOG}.old" >/dev/null  # Log schon vorhanden
         shopt -s nullglob  # Nichts tun, wenn nichts gefunden wird
         for log in "${LOG%.log}"_*.log ; do
           { echo "== Logfile: $log ==" ; cat "$log" ;} >> "$LOG"
@@ -815,12 +816,12 @@ for PROFIL in "${P[@]}" ; do
 
   ### Sicherung der Datei-Zugriffskontrollisten (ACLs) ###
   if [[ -n "$SAVE_ACL" ]] ; then
-  echo "Starte Sicherung der Dateizugriffskontrollisten (ACLs) nach: ${SAVE_ACL}" >> "$LOG"
-  echo -e "$msgINF Starte Sicherung der Dateizugriffskontrollisten (ACLs) nach:\n  \"${SAVE_ACL}\""
+  echo "Starte Sicherung der Datei-Zugriffskontrollisten (ACLs) nach: ${SAVE_ACL}" >> "$LOG"
+  echo -e "$msgINF Starte Sicherung der Datei-Zugriffskontrollisten (ACLs) nach:\n  \"${SAVE_ACL}\""
     if type getfacl &>/dev/null ; then
-      getfacl --recursive "$SOURCE" > "$SAVE_ACL" 2> "$ERRLOG"
+      getfacl --recursive --absolute-names "$SOURCE" > "$SAVE_ACL" 2> "$ERRLOG"
     else
-      echo -e "$msgERR \"getfacl\" zum Sichern der Dateizugriffskontrollisten nicht gefunden!\e[0m" >&2
+      echo -e "$msgERR \"getfacl\" zum Sichern der Datei-Zugriffskontrollisten nicht gefunden!\e[0m" >&2
     fi
   fi
 
@@ -834,7 +835,7 @@ for PROFIL in "${P[@]}" ; do
       echo "Starte zusätzliche Sicherung nach ${EXTRA_TARGET}…" >> "$LOG"
       echo -e "$msgINF Starte zusätzliche Sicherung nach:\n  \"${EXTRA_TARGET}\""
       # Zielordner suchen und erstellen
-      [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" || f_exit 1 ;}
+      [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" >/dev/null || f_exit 1 ;}
 
       # Prüfen, ob maximale inkrementelle Sicherungen vorhanden sind
       cd "$EXTRA_TARGET" || f_exit 1
@@ -845,7 +846,7 @@ for PROFIL in "${P[@]}" ; do
         if [[ $EXTRA_MAXBAK -gt 0 ]] ; then  # Sicherung in Ordner verschieben
           PREVDIR="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
           if [[ ! -d "$PREVDIR" ]] ; then
-            mkdir --parents "$PREVDIR"  # Ordner erstellen
+            mkdir --parents "$PREVDIR" >/dev/null  # Ordner erstellen
             echo -e "$msgINF Verschiebe Sicherung nach $PREVDIR"
             { echo "Verschiebe Sicherung nach ${EXTRA_TARGET}/${PREVDIR}"
               mv --force --verbose ./*".$EXTRA_ARCHIV" "$PREVDIR"  # Alle Archive verschieben
@@ -914,7 +915,7 @@ if [[ -n "$MAILADRESS" ]] ; then
     || ARCH="Logs_$(date +'%F-%H%M').tar.xz"  # Archiv mit Datum und Zeit (kein :)
   ARCHIV="${TMPDIR}/${ARCH}"              # Archiv mit Pfad
   MAILFILE="${TMPDIR}/~Mail.txt"          # Text für die eMail
-  SUBJECT="Sicherungs-Bericht von $SELF_NAME auf $HOSTNAME"  # Betreff der Mail
+  SUBJECT="Sicherungs-Bericht von $SELF_NAME auf ${HOSTNAME^^}"  # Betreff der Mail
 
   if [[ ${MAXLOGSIZE:=$((1024*1024))} -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
     # Log(s) packen
@@ -943,14 +944,14 @@ if [[ -n "$MAILADRESS" ]] ; then
   fi
 
     echo -e "$msgINF Erzeuge Text für die eMail…"  # Text der eMail erzeugen
-  { echo -e "Sicherungs-Bericht von $SELF_NAME [#${VERSION}] auf ${HOSTNAME}.\n"
+  { echo -e "Sicherungs-Bericht von $SELF_NAME [#${VERSION}] auf ${HOSTNAME^^}.\n"
     echo -n 'Die letzte Sicherung wurde beendet. '
     [[ ${#LOGFILES[@]} -ge 1 ]] && echo "Es wurde(n) ${#LOGFILES[@]} Log-Datei(en) erstellt."
   } > "$MAILFILE"
 
   if [[ ${#ERRLOGS[@]} -ge 1 ]] ; then
     echo -e "\n==> Zusätzlich wurde(n) ${#ERRLOGS[@]} Fehler-Log(s) erstellt!" >> "$MAILFILE"
-    SUBJECT="FEHLER bei Sicherung von $SELF_NAME auf $HOSTNAME"  # Neuer Betreff der Mail bei Fehlern
+    SUBJECT="FEHLER bei Sicherung von $SELF_NAME auf ${HOSTNAME^^}"  # Neuer Betreff der Mail bei Fehlern
   fi
 
   if [[ ${#RSYNCRC[@]} -ge 1 && "$SHOWERRORS" == 'true' ]] ; then  # Profile mit Fehlern anzeigen
@@ -969,7 +970,7 @@ if [[ -n "$MAILADRESS" ]] ; then
         fi
       done < /etc/os-release
     fi
-    echo -e "\n==> Auf $HOSTNAME verwendetes Betriebssystem:\n${OSNAME:-'Unbekannt'}" >> "$MAILFILE"
+    echo -e "\n==> Auf ${HOSTNAME^^} verwendetes Betriebssystem:\n${OSNAME:-'Unbekannt'}" >> "$MAILFILE"
   fi  # SHOWOS
 
   [[ "$SHOWOPTIONS" == 'true' ]] && echo -e "\n==> Folgende Optionen wurden verwendet:\n$*" >> "$MAILFILE"
