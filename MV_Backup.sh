@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171024
+VERSION=171025
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -833,6 +833,7 @@ for PROFIL in "${P[@]}" ; do
       sleep 10
     else
       printf -v dt '%(%Y%m%d_%H%M%S)T'  # Datum und Zeit (20171017_131601)
+      [[ "${SOURCE:0:1}" == '/' ]] && EXTRA_SOURCE="${SOURCE#\/}"  # Führendes "/" entfernen
       echo "Starte zusätzliche Sicherung nach ${EXTRA_TARGET}…" >> "$LOG"
       echo -e "$msgINF Starte zusätzliche Sicherung nach:\n  \"${EXTRA_TARGET}\""
       # Zielordner suchen und erstellen
@@ -882,11 +883,12 @@ for PROFIL in "${P[@]}" ; do
       echo -e "$msgINF Erstelle zusätzliche ${_INC}Sicherung…"
       { echo "Erstelle zusätzliche ${_INC}Sicherung…"
         tar --create --auto-compress --absolute-names --preserve-permissions \
-          --listed-incremental="${EXTRA_TARGET}/.snapshot.file" --transform="s,.,$SOURCE," \
+          --listed-incremental="${EXTRA_TARGET}/.snapshot.file" \
+          --transform="s,.,${EXTRA_SOURCE:-$SOURCE}," \
           --file="${EXTRA_TARGET}/${TITLE}_${dt}.${EXTRA_ARCHIV}" \
           --directory="$R_TARGET" .
       } >> "$LOG"
-      unset -v '_INC'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
+      unset -v '_INC' 'EXTRA_SOURCE'  # Zurücksetzen für den Fall dass mehrere Profile vorhanden sind
     fi  # MODE == S
   fi  # -n EXTRA_TARGET
 
