@@ -892,8 +892,8 @@ for PROFIL in "${P[@]}" ; do
     fi  # MODE == S
   fi  # -n EXTRA_TARGET
 
-  if [[ -s "$ERRLOG" ]] ; then  # Existiert und ist größer als 0 Byte
-    ERRLOGS+=("$ERRLOG")        # Fehler-Log merken
+  if [[ -s "$ERRLOG" ]] ; then  # Existiert und ist nicht Leer
+     [[ "$ERRLOG" -nt "$TMPDIR" ]] && ERRLOGS+=("$ERRLOG")  # Fehler-Log merken, wenn neuer ale eine eventuel vorhandenen alte Version
   else
     rm "$ERRLOG" &>/dev/null    # Leeres Log löschen
   fi
