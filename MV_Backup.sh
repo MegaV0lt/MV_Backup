@@ -884,7 +884,7 @@ for PROFIL in "${P[@]}" ; do
       { echo "Erstelle zusätzliche ${_INC}Sicherung…"
         tar --create --auto-compress --absolute-names --preserve-permissions \
           --listed-incremental="${EXTRA_TARGET}/.snapshot.file" \
-          --transform="s,.,${EXTRA_SOURCE:-$SOURCE}," \
+          --transform="s,^\.,${EXTRA_SOURCE:-$SOURCE}," \
           --file="${EXTRA_TARGET}/${TITLE}_${dt}.${EXTRA_ARCHIV}" \
           --directory="$R_TARGET" .
       } >> "$LOG"
@@ -893,7 +893,7 @@ for PROFIL in "${P[@]}" ; do
   fi  # -n EXTRA_TARGET
 
   if [[ -s "$ERRLOG" ]] ; then  # Existiert und ist nicht Leer
-     [[ "$ERRLOG" -nt "$TMPDIR" ]] && ERRLOGS+=("$ERRLOG")  # Fehler-Log merken, wenn neuer ale eine eventuel vorhandenen alte Version
+     [[ "$ERRLOG" -nt "$TMPDIR" ]] && ERRLOGS+=("$ERRLOG")  # Fehler-Log merken, wenn neuer als eine eventuell vorhandenen alte Version
   else
     rm "$ERRLOG" &>/dev/null    # Leeres Log löschen
   fi
