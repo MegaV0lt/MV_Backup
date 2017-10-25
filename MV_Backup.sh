@@ -841,8 +841,8 @@ for PROFIL in "${P[@]}" ; do
 
       # Prüfen, ob maximale inkrementelle Sicherungen vorhanden sind
       cd "$EXTRA_TARGET" || f_exit 1
-      mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null) ; rc=$?
-      if [[ $rc -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXINC ]] ; then
+      mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null || :)  # "|| :" Fehlercode unterdrücken
+      if [[ "${#MAPFILE[@]}" -gt $EXTRA_MAXINC ]] ; then
         echo "Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})" >> "$LOG"
         echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})"
         if [[ $EXTRA_MAXBAK -gt 0 ]] ; then  # Sicherung in Ordner verschieben
@@ -866,8 +866,8 @@ for PROFIL in "${P[@]}" ; do
         fi
         # Prüfen, ob max. Sicherungen vorhanden sind
         if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
-          mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null) ; rc=$?
-          if [[ $rc -eq 0 && "${#MAPFILE[@]}" -gt $EXTRA_MAXBAK ]] ; then
+          mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null || :)  # "|| :" Fehlercode unterdrücken
+          if [[ "${#MAPFILE[@]}" -gt $EXTRA_MAXBAK ]] ; then
             echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
             echo -e "$msgINF Lösche älteste Sicherung ${MAPFILE[0]}"
             { echo "Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
