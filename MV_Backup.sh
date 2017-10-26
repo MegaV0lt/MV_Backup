@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171025
+VERSION=171026
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -820,7 +820,7 @@ for PROFIL in "${P[@]}" ; do
   echo "Starte Sicherung der Datei-Zugriffskontrollisten (ACLs) nach: ${SAVE_ACL}" >> "$LOG"
   echo -e "$msgINF Starte Sicherung der Datei-Zugriffskontrollisten (ACLs) nach:\n  \"${SAVE_ACL}\""
     if type getfacl &>/dev/null ; then
-      getfacl --recursive --absolute-names "$SOURCE" > "$SAVE_ACL" 2> "$ERRLOG"
+      getfacl --recursive --absolute-names "$SOURCE" > "$SAVE_ACL" 2>> "$ERRLOG"
     else
       echo -e "$msgERR \"getfacl\" zum Sichern der Datei-Zugriffskontrollisten nicht gefunden!\e[0m" >&2
     fi
@@ -892,12 +892,6 @@ for PROFIL in "${P[@]}" ; do
     fi  # MODE == S
   fi  # -n EXTRA_TARGET
 
-  if [[ -s "$ERRLOG" ]] ; then  # Existiert und ist nicht Leer
-     [[ "$ERRLOG" -nt "$TMPDIR" ]] && ERRLOGS+=("$ERRLOG")  # Fehler-Log merken, wenn neuer als eine eventuell vorhandenen alte Version
-  else
-    rm "$ERRLOG" &>/dev/null    # Leeres Log löschen
-  fi
-
   # Log-Datei und Ziel merken für Mail-Versand
   [[ -n "$MAILADRESS" ]] && { LOGFILES+=("$LOG") ; TARGETS+=("$TARGET") ;}
 
@@ -907,7 +901,14 @@ for PROFIL in "${P[@]}" ; do
   [[ ${RC:-0} -ne 0 ]] && ERRTEXT="\e[91mmit Fehler ($RC) \e[0;1m"
   echo -e "\a\n\n${msgINF} \e[1mProfil \"${TITLE}\" wurde ${ERRTEXT}${FINISHEDTEXT:=abgeschlossen}\e[0m"
   echo -e "  Weitere Informationen sind in der Datei:\n  \"${LOG}\" gespeichert.\n"
-  [[ -s "$ERRLOG" ]] && echo -e "$msgINF Fehlermeldungen wurden in der Datei:\n  \"${ERRLOG}\" gespeichert.\n"
+  if [[ -s "$ERRLOG" ]] ; then  # Existiert und ist nicht Leer
+    if [[ "$ERRLOG" -nt "$TMPDIR" ]] ; then  # Fehler-Log merken, wenn neuer als "$TMPDIR"
+      ERRLOGS+=("$ERRLOG")
+      echo -e "$msgINF Fehlermeldungen wurden in der Datei:\n  \"${ERRLOG}\" gespeichert.\n"
+    fi
+  else
+    rm "$ERRLOG" &>/dev/null  # Leeres Log löschen
+  fi
   unset -v 'RC' 'ERRTEXT'  # $RC und $ERRTEXT zurücksetzen
 done # for PROFILE
 SCRIPT_TIMING[1]=$SECONDS  # Zeit nach der Sicherung mit rsync/tar/getfacl (Sekunden)
