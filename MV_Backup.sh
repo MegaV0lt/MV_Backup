@@ -925,7 +925,7 @@ if [[ -n "$MAILADRESS" ]] ; then
 
   if [[ ${MAXLOGSIZE:=$((1024*1024))} -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
     # Log(s) packen
-    echo -e "$msgINF Erstelle Archiv \"${ARCHIV}\" mit $((${#LOGFILES[@]}+${#ERRLOGS[@]})) Logdatei(en)…"
+    echo -e "$msgINF Erstelle Archiv mit $((${#LOGFILES[@]}+${#ERRLOGS[@]})) Logdatei(en):\n  \"${ARCHIV}\" "
     tar --create --absolute-names --auto-compress --file="$ARCHIV" "${LOGFILES[@]}" "${ERRLOGS[@]}"
     FILESIZE="$(stat -c %s "$ARCHIV")"    # Größe des Archivs
     if [[ $FILESIZE -gt $MAXLOGSIZE ]] ; then
@@ -949,7 +949,7 @@ if [[ -n "$MAILADRESS" ]] ; then
     } > "$ARCHIV"
   fi
 
-    echo -e "$msgINF Erzeuge Text für die eMail…"  # Text der eMail erzeugen
+    echo -e "$msgINF Erzeuge eMail-Bericht…"  # Text der eMail erzeugen
   { echo -e "Sicherungs-Bericht von $SELF_NAME [#${VERSION}] auf ${HOSTNAME^^}.\n"
     echo -n 'Die letzte Sicherung wurde beendet. '
     [[ ${#LOGFILES[@]} -ge 1 ]] && echo "Es wurde(n) ${#LOGFILES[@]} Log-Datei(en) erstellt."
