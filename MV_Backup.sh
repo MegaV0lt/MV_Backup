@@ -41,8 +41,8 @@ set -o errtrace  # ERR Trap auch in Funktionen
 f_errtrap() {  # ERR-Trap mit "ON" aktivieren, ansonsten nur ins ERRLOG
   if [[ "${1^^}" == 'ON' ]] ; then
     trap 'f_exit 2 "$BASH_COMMAND" "$LINENO" ${FUNCNAME:-$BASH_SOURCE} $?' ERR  # Bei Fehlern und nicht gefundenen Programmen
-  else
-    trap 'echo "=> Info (Fehler $?) in Zeile "$LINENO" (${FUNCNAME:-$BASH_SOURCE}): $BASH_COMMAND" >> "${ERRLOG:-/tmp/${SELF_NAME%.*}.log}"' ERR  # ERR-Trap nur loggen
+  else  # ERR-Trap nur loggen
+    trap 'echo "=> Info (Fehler $?) in Zeile "$LINENO" (${FUNCNAME:-$BASH_SOURCE}): $BASH_COMMAND" >> "${ERRLOG:-/tmp/${SELF_NAME%.*}.log}"' ERR
   fi
 }
 
@@ -899,10 +899,11 @@ for PROFIL in "${P[@]}" ; do
   [[ -n "$UMOUNT_FTP" ]] && { umount "$FTPMNT" ; unset -v 'UMOUNT_FTP' ;}
 
   [[ ${RC:-0} -ne 0 ]] && ERRTEXT="\e[91mmit Fehler ($RC) \e[0;1m"
-  echo -e "\a\n\n${msgINF} \e[1mProfil \"${TITLE}\" wurde ${ERRTEXT}${FINISHEDTEXT:=abgeschlossen}\e[0m"
+  echo -e -n "\a\n\n${msgINF} \e[1mProfil \"${TITLE}\" wurde ${ERRTEXT}${FINISHEDTEXT:=abgeschlossen}\e[0m"
+  printf ' (%(%x %X)T)\n'  # Datum und Zeit
   echo -e "  Weitere Informationen sind in der Datei:\n  \"${LOG}\" gespeichert.\n"
   if [[ -s "$ERRLOG" ]] ; then  # Existiert und ist nicht Leer
-    if [[ "$ERRLOG" -nt "$TMPDIR" ]] ; then  # Fehler-Log merken, wenn neuer als "$TMPDIR"
+    if [[ $(stat -c %Y "$ERRLOG") -gt $(stat -c %Y "$TMPDIR") ]] ; then  # Fehler-Log merken, wenn neuer als "$TMPDIR"
       ERRLOGS+=("$ERRLOG")
       echo -e "$msgINF Fehlermeldungen wurden in der Datei:\n  \"${ERRLOG}\" gespeichert.\n"
     fi
