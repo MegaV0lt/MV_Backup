@@ -26,6 +26,7 @@ Installation vom GIT:
   git co https://github.com/MegaV0lt/MV_Backup.git MV_Backup-git
 
 - Backupskript und *.conf kopieren
+  cd MV_Backup-git
   cp MV_Backup.sh /usr/local/sbin/
   cp MV_Backup.conf.dist /usr/local/sbin/MV_Backup.conf
 
