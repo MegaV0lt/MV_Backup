@@ -1,0 +1,17 @@
+# /etc/fstab: static file system information.
+#
+# Use 'blkid' to print the universally unique identifier for a
+# device; this may be used with UUID= as a more robust way to name devices
+# that works even if disks are added and removed. See fstab(5).
+#
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+
+# Beispiel für eine NFS-Freigabe, die manuell eingehängt werden kann (noauto)
+# HP-T610 NFS-Freigabe der USB-Festplatte
+HP-T610:/mnt/usbdisk  /mnt/HP-T610_usbdisk  nfs  users,noauto,defaults  0 0
+
+# Beispiel für eine Samba-Freigabe, die manuell eingehängt werden kann (noauto)
+# Samba-Freigabe auf HDVDR01
+//HDVDR01/root  /mnt/HDVDR01_root  cifs  defaults,user,username=root,password=password  0 0
+
+
