@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171026
+VERSION=171028
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -188,12 +188,12 @@ f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
       | xargs --null rm --recursive --force --verbose
     # Logdatei(en) löschen (Wenn $TITLE im Namen)
-    [[ -n "$LOG" ]] && find "${LOG%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
+    find "${LOG%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
       -name "*${TITLE}*" ! -name "${LOG##*/}" -print0 \
         | xargs --null rm --recursive --force --verbose
-    [[ -n "$SAVE_ACL" ]] && find "${SAVE_ACL%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
+    [[ -n "$SAVE_ACL" ]] && { find "${SAVE_ACL%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
       -name "*${TITLE}*" ! -name "${SAVE_ACL##*/}" -print0 \
-        | xargs --null rm --recursive --force --verbose
+        | xargs --null rm --recursive --force --verbose ;} || :
   } >> "$LOG"
 }
 
@@ -303,7 +303,8 @@ f_source_config() {  # Konfiguration laden
 }
 
 # --- START ---
-[[ -e "/tmp/${SELF_NAME%.*}.log" || -e "/tmp/${SELF_NAME%.*}.env" ]] && rm --force "/tmp/${SELF_NAME%.*}{.log,.env}" &>/dev/null
+[[ -e "/tmp/${SELF_NAME%.*}.log" ]] && rm --force "/tmp/${SELF_NAME%.*}.log" &>/dev/null
+[[ -e "/tmp/${SELF_NAME%.*}.env" ]] && rm --force "/tmp/${SELF_NAME%.*}.env" &>/dev/null
 f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
 SCRIPT_TIMING[0]=$SECONDS  # Startzeit merken (Sekunden)
 
@@ -967,15 +968,11 @@ if [[ -n "$MAILADRESS" ]] ; then
     done
   fi  # SHOWERRORS
 
-  if [[ "$SHOWOS" == 'true' ]] ; then  # //TODO uname --all ?
-    if [[ -f '/etc/os-release' ]] ; then
-      while read -r ; do
-        if [[ ${REPLY^^} =~ PRETTY_NAME ]] ; then
-          OSNAME="${REPLY/*=}" ; OSNAME="${OSNAME//\"/}"
-          break
-        fi
-      done < /etc/os-release
-    fi
+  if [[ "$SHOWOS" == 'true' && -f '/etc/os-release' ]] ; then
+    while read -r ; do
+      [[ ${REPLY^^} =~ PRETTY_NAME ]] && { OSNAME="${REPLY/*=}"
+        OSNAME="${OSNAME//\"/}" ; break ;}
+    done < /etc/os-release
     echo -e "\n==> Auf ${HOSTNAME^^} verwendetes Betriebssystem:\n${OSNAME:-'Unbekannt'}" >> "$MAILFILE"
   fi  # SHOWOS
 
@@ -1001,7 +998,7 @@ if [[ -n "$MAILADRESS" ]] ; then
         # Anzeige der Belegung des Sicherungsverzeichnisses und Unterordner
         echo -e "\n==> Belegung von ${LOGDIR}:"
         du --human-readable --summarize "$LOGDIR"
-        for dir in "${LOGDIR}"/*/ ; do  # TODO: Besseren Weg finden
+        for dir in "${LOGDIR}"/*/ ; do
           du --human-readable --summarize "$dir"
         done
       } >> "$MAILFILE"
