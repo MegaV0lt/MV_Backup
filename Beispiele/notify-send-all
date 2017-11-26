@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# notify-send-all
+# Um alle angemeldeten Benutzer zu benachrichtigen,
+#+wenn ein Skript als root läuft.
+# Damit das Skript gefunden wird, muss es im Pfad von root liegen.
+
+PATH='/usr/bin'
+
+mapfile -t < <(who)  # beutzer tty Login-Datum Login-Zeit (:0)
+for i in ${!MAPFILE[@]}; do
+  ULINE=(${MAPFILE[i]})  # In Array
+  NAME="${ULINE[0]}"     # Benutzername
+  DISPLAY="${ULINE[4]%)}" ; DISPLAY="${DISPLAY#(}"
+  sudo -u "$NAME" DISPLAY="$DISPLAY" PATH="$PATH" notify-send "$@"
+done
