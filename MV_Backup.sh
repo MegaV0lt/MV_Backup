@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171028
+VERSION=171126
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -716,7 +716,7 @@ for PROFIL in "${P[@]}" ; do
         for i in "${!MAPFILE[@]}" ; do
           [[ "${MAPFILE[i]:0:1}" != '/' ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
         done
-        echo "==> $dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicherstellen, dass ein Log existiert
+        echo "==> $dt - $SELF_NAME [#${VERSION}] - Start:" >> "${LOG%.log}_${cnt}.log"  # Sicherstellen, dass ein Log existiert
         while read -r dir ; do  # Alle Ordner in der Quelle bis zur $maxdepth tiefe
           [[ -e "${TMPDIR}/.stopflag" ]] && break  # Platte voll!
           DIR_C="${dir//[^\/]}"  # Alle Zeichen außer "/" löschen
