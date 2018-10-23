@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=171126
+VERSION=181023
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -789,7 +789,7 @@ for PROFIL in "${P[@]}" ; do
         for pid in "${!_JOBS[@]}" ; do
           wait "$pid" ; RC=$?  # wait liefert $? auch für bereits beendete Prozesse
           if [[ $RC -ne 0 ]] ; then
-            echo -e "[${pid}] Beendet mit Fehler: ${RC}\n${_JOBS[$pid]}"
+            echo -e "Fehler beim warten auf Prozess mit der PID ${pid}. Rückgabekode: ${RC}\n${_JOBS[$pid]}"
             RSYNCRC+=("$RC") ; RSYNCPROF+=("${_JOBS[$pid]}")  # Profilname und Fehlercode merken
           fi
         done
