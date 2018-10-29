@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=181023
+VERSION=181029
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -750,7 +750,7 @@ for PROFIL in "${P[@]}" ; do
 
             # rsync-Prozesse auf $maxthreads begrenzen. Warten, wenn Anzahl erreicht ist
             while [[ $(pgrep --exact --count rsync) -ge $maxthreads ]] ; do
-              echo -e "$msgINF Es laufen bereits $maxthreads rsync-Processe. Warte $sleeptime sekunden…"
+              echo -e -n "\r$msgINF Es laufen bereits $maxthreads rsync-Processe. Warte $sleeptime sekunden…"
               sleep "$sleeptime"
             done
 
