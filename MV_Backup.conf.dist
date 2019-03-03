@@ -78,6 +78,9 @@ SHOWCONTENT='true'  # Zeige Inhalt der Sichrungsziele (Oberste Ebene)
 SHOWERRORS='true'   # Zeige Profile mit Fehlern (rsync Fehlercode)
 SHOWDURATION='true' # Zeige Dauer der Sicherung
 
+# Format des Archivs (Logdateien). Beispiele: tar.xz, tar.gz, tar.bz2, zip
+LOGARCH_FMT='tar.xz'  # Vorgabe ist tar.xz 
+
 # Max. Größe des gepackten Logarchivs in Byte, das per Mail gesendet wird.
 # Bei MAXLOGSIZE=0 wird kein Archiv angehängt. Betrifft nur das Archiv!
 #MAXLOGSIZE=$((5*1024*1024))  # Beispiel 5 MB
