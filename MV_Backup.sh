@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=181029
+VERSION=190303
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -157,7 +157,7 @@ f_settings() {
         : "${TITLE:=Profil_${ARG}}"  # Wenn Leer, dann Profil_ gefolgt von Parameter
         : "${LOG:=${TMPDIR}/${SELF_NAME%.*}.log}"  # Temporäre Logdatei
         : "${FILES_DIR:=_DATEIEN}"                 # Vorgabe für Sicherungsordner
-        if [[ -n "$EXTRA_TARGET}" ]] ; then
+        if [[ -n "${EXTRA_TARGET}" ]] ; then
           : "${EXTRA_ARCHIV:=tar.xz}" ; : "${EXTRA_MAXBAK:=0}" ; : "${EXTRA_MAXINC:=7}"
         fi
         # Bei mehreren Profilen müssen die Werte erst gesichert und später wieder zurückgesetzt werden
@@ -918,8 +918,8 @@ SCRIPT_TIMING[1]=$SECONDS  # Zeit nach der Sicherung mit rsync/tar/getfacl (Seku
 # --- eMail senden ---
 if [[ -n "$MAILADRESS" ]] ; then
   # Variablen
-  printf -v ARCH 'Logs_%(%F-%H%M)T.tar.xz' \
-    || ARCH="Logs_$(date +'%F-%H%M').tar.xz"  # Archiv mit Datum und Zeit (kein :)
+  printf -v ARCH 'Logs_%(%F-%H%M)T'."${LOGARCH_FMT:=tar.xz}" \
+    || ARCH="Logs_$(date +'%F-%H%M').${LOGARCH_FMT:=tar.xz}"  # Archiv mit Datum und Zeit (kein :)
   ARCHIV="${TMPDIR}/${ARCH}"              # Archiv mit Pfad
   MAILFILE="${TMPDIR}/~Mail.txt"          # Text für die eMail
   SUBJECT="Sicherungs-Bericht von $SELF_NAME auf ${HOSTNAME^^}"  # Betreff der Mail
