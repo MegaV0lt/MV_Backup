@@ -14,10 +14,12 @@ printf -v DT_TODAY '%(%F)T'  # JJJJ-MM-DD (2017-10-19)
 printf -v DT_NOW '%(%F_%H%M)T'  # JJJJ-MM-DD_HHMM (2017-10-19_1107)
 
 # Optionen für rsync; Verzeichnisse dürfen nicht angegeben werden
-RSYNC_OPT=('-savPbh' '--delete' '--numeric-ids' '--stats')
+# Vorgabewerte; Müssen normalerweise nicht geändert werden
+RSYNC_OPT=('--partial' '--progress' '--protect-args' '--archive' '--human-readable')
+RSYNC_OPT+=('--verbose' '--delete' '--numeric-ids' '--stats')
 
 # Optionen für rsync im Modus "Snapshot"; Verzeichnisse dürfen nicht angegeben werden
-RSYNC_OPT_SNAPSHOT=('-av')  # Parameter für den Modus "Snapshot"
+RSYNC_OPT_SNAPSHOT=('--archive' '--verbose')  # Parameter für den Modus "Snapshot"
 
 # [optional] Einhängepunkt der externen Festplatte
 # Vor der Sicherung wird geprüft, ob die externe Festplatte eingebunden ist
