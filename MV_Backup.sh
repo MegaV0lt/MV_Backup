@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=190303
+VERSION=190314
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -157,7 +157,7 @@ f_settings() {
         : "${TITLE:=Profil_${ARG}}"  # Wenn Leer, dann Profil_ gefolgt von Parameter
         : "${LOG:=${TMPDIR}/${SELF_NAME%.*}.log}"  # Temporäre Logdatei
         : "${FILES_DIR:=_DATEIEN}"                 # Vorgabe für Sicherungsordner
-        if [[ -n "${EXTRA_TARGET}" ]] ; then
+        if [[ -n "$EXTRA_TARGET" ]] ; then
           : "${EXTRA_ARCHIV:=tar.xz}" ; : "${EXTRA_MAXBAK:=0}" ; : "${EXTRA_MAXINC:=7}"
         fi
         # Bei mehreren Profilen müssen die Werte erst gesichert und später wieder zurückgesetzt werden
@@ -288,7 +288,7 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
         echo -e "\n\n => Die Sicherung (${TITLE}) wird abgebrochen!" ;} >> "$ERRLOG"
       killall --exact rsync >/dev/null 2>> "$ERRLOG"  # Alle rsync-Prozesse beenden
       if pgrep --exact rsync ; then
-        echo 'FEHLER! Es laufen immer noch rsync-Prozesse! Versuche zu beenden…'
+        echo "$msgERR Es laufen immer noch rsync-Prozesse! Versuche zu beenden…"
         killall --exact --verbose rsync 2>> "$ERRLOG"
       fi
       break  # Beenden der while-Schleife
@@ -382,8 +382,9 @@ echo -e "\e[46m \e[0m $CONFLOADED Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
 if [[ ! -L /dev/fd ]] ; then
   echo -e "$msgWRN Der Symbolische Link \"/dev/fd -> /proc/self/fd\" fehlt!"
   echo -e "$msgINF Erstelle Symbolischen Link \"/dev/fd\"…"
-  ln -sf /proc/self/fd /dev/fd || { echo -e "$msgERR Fehler beim erstellen des Symbolischen Links!\e[0m" >&2
-    exit 1; }
+  ln --symbolic --force /proc/self/fd /dev/fd || \
+    { echo -e "$msgERR Fehler beim erstellen des Symbolischen Links!\e[0m" >&2
+      exit 1; }
 fi
 
 OPTIND=1  # Wird benötigt, weil getops ein weiteres mal verwendet wird!
@@ -548,14 +549,14 @@ for prog in "${NEEDPROGS[@]}" ; do
   type "$prog" &>/dev/null || MISSING+=("$prog")
 done
 if [[ -n "${MISSING[*]}" ]] ; then  # Fehlende Programme anzeigen
-  echo "Sie benötigen \"${MISSING[*]}\" zur Ausführung dieses Skriptes!" >&2
+  echo "$msgERR Sie benötigen \"${MISSING[*]}\" zur Ausführung dieses Skriptes!" >&2
   f_exit 1
 fi
 
 # --- PRE_ACTION ---
 if [[ -n "$PRE_ACTION" ]] ; then
   echo -e "$msgINF Führe PRE_ACTION-Befehl(e) aus…"
-  eval "$PRE_ACTION" || { echo "Fehler beim Ausführen von \"${PRE_ACTION}\"!" ; sleep 10 ;}
+  eval "$PRE_ACTION" || { echo "$msgWRN Fehler beim Ausführen von \"${PRE_ACTION}\"!" ; sleep 10 ;}
 fi
 
 for PROFIL in "${P[@]}" ; do
@@ -568,7 +569,7 @@ for PROFIL in "${P[@]}" ; do
     # Festplatte (Ziel) eingebunden?  //TODO: Bessere Methode für grep finden
     # if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep "$MOUNT" /proc/mounts &>/dev/null) ]] ; then
     if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* ]] ; then
-      if ! mountpoint -q "$MOUNT" ; then
+      if ! mountpoint --quiet "$MOUNT" ; then
         echo -e -n "$msgINF Versuche Sicherungsziel (${MOUNT}) einzuhängen…"
         mount "$MOUNT" &>/dev/null \
           || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${MOUNT}\")" >&2 ; f_exit 1 ;}
@@ -578,10 +579,10 @@ for PROFIL in "${P[@]}" ; do
     fi
     # Ist die Quelle ein FTP und eingebunden?
     if [[ -n "$FTPSRC" ]] ; then
-      if ! mountpoint "$FTPMNT" ; then
+      if ! mountpoint --quiet "$FTPMNT" ; then
         echo -e -n "$msgINF Versuche FTP-Quelle (${FTPSRC}) unter \"${FTPMNT}\" einzuhängen…"
         curlftpfs "$FTPSRC" "$FTPMNT" &>/dev/null    # FTP einhängen
-        grep -q "$FTPMNT" /proc/mounts \
+        grep --quiet "$FTPMNT" /proc/mounts \
           || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${FTPMNT}\")" >&2 ; f_exit 1 ;}
         echo -e "OK.\nDie FTP-Quelle (${FTPSRC}) wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
         UMOUNT_FTP=1  # Nach Sicherung wieder aushängen
@@ -589,7 +590,7 @@ for PROFIL in "${P[@]}" ; do
     fi
     # Festplatte (Ziel) für zusätzliche Sicherung eingebunden?
     if [[ -n "$EXTRA_MOUNT" && "$EXTRA_TARGET" == "$EXTRA_MOUNT"* ]] ; then
-      if ! mountpoint -q "$EXTRA_MOUNT" ; then
+      if ! mountpoint --quiet "$EXTRA_MOUNT" ; then
         echo -e -n "$msgINF Versuche zusätzliches Sicherungsziel (${EXTRA_MOUNT}) einzuhängen…"
         mount "$EXTRA_MOUNT" &>/dev/null \
           || { echo -e "\n$msgERR Das zusätzliche Sicherungsziel konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${EXTRA_MOUNT}\")" >&2
@@ -984,14 +985,14 @@ if [[ -n "$MAILADRESS" ]] ; then
     if [[ "$SHOWUSAGE" == 'true' ]] ; then  # Anzeige ist abschaltbar in der *.conf
       mapfile -t < <(df -Ph "${TARGETS[i]}")  # Ausgabe von df in Array (Zwei Zeilen)
       TARGETLINE=(${MAPFILE[1]}) ; TARGETDEV=${TARGETLINE[0]}  # Erstes Element ist das Device
-      if [[ ! "${TARGETDEVS[@]}" =~ $TARGETDEV ]] ; then
+      if [[ ! "${TARGETDEVS[*]}" =~ $TARGETDEV ]] ; then
         TARGETDEVS+=("$TARGETDEV")
         echo -e "\n==> Status des Sicherungsziels (${TARGETDEV}):" >> "$MAILFILE"
         echo -e "${MAPFILE[0]}\n${MAPFILE[1]}" >> "$MAILFILE"
       fi
     fi  # SHOWUSAGE
     if [[ "$SHOWCONTENT" == 'true' ]] ; then  # Auflistung ist abschaltbar in der *.conf
-      LOGDIR="${LOGFILES[i]%/*}" ; [[ "${LOGDIRS[@]}" =~ $LOGDIR ]] && continue
+      LOGDIR="${LOGFILES[i]%/*}" ; [[ "${LOGDIRS[*]}" =~ $LOGDIR ]] && continue
       LOGDIRS+=("$LOGDIR")
       { echo -e "\n==> Inhalt von ${LOGDIR}:"
         ls -l --human-readable "$LOGDIR"
@@ -1065,7 +1066,7 @@ fi
 # --- POST_ACTION ---
 if [[ -n "$POST_ACTION" ]] ; then
   echo -e "$msgINF Führe POST_ACTION-Befehl(e) aus…"
-  eval "$POST_ACTION" || { echo "Fehler beim Ausführen von \"${POST_ACTION}\"!" ; sleep 10 ;}
+  eval "$POST_ACTION" || { echo "$msgWRN Fehler beim Ausführen von \"${POST_ACTION}\"!" ; sleep 10 ;}
   unset -v 'POST_ACTION'
 fi
 
@@ -1085,7 +1086,7 @@ if [[ -n "$SHUTDOWN" ]] ; then
     || dbus-send --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.RequestShutdown \
     || dbus-send --print-reply --dest=org.kde.ksmserver /KSMServer org.kde.KSMServerInterface.logout 0 2 2 \
     || gnome-power-cmd shutdown || dcop ksmserver ksmserver logout 0 2 2 \
-    || halt || shutdown -h now
+    || halt || shutdown --halt now
 else
   echo -e '\n' ; "$NOTIFY" "Sicherung(en) abgeschlossen."
 fi
