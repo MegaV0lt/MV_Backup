@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=190314
+VERSION=190507
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -182,7 +182,7 @@ f_settings() {
 
 f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
   local dt
-  printf -v dt '%(%F %R.%S)T' || dt="$(date +'%F %R.%S')"
+  printf -v dt '%(%F %R.%S)T' -1 || dt="$(date +'%F %R.%S')"
   echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
   { echo "${dt}: Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
@@ -201,7 +201,7 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
   local dt file srcdir="$1" targetdir="$2"
   [[ $# -ne 2 ]] && return 1  # Benötigt Quelle und Ziel als Parameter
   cd "$srcdir" || return 1    # Bei Fehler abbruch
-  printf -v dt '%(%F %R.%S)T' || dt="$(date +'%F %R.%S')"
+  printf -v dt '%(%F %R.%S)T' -1 || dt="$(date +'%F %R.%S')"
   echo "Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…"
   echo "${dt}: Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…" >> "$LOG"
   # Dateien auf Quelle die älter als $DEL_OLD_SOURCE Tage sind einlesen
@@ -384,7 +384,7 @@ if [[ ! -L /dev/fd ]] ; then
   echo -e "$msgINF Erstelle Symbolischen Link \"/dev/fd\"…"
   ln --symbolic --force /proc/self/fd /dev/fd || \
     { echo -e "$msgERR Fehler beim erstellen des Symbolischen Links!\e[0m" >&2
-      exit 1; }
+      f_exit 1; }
 fi
 
 OPTIND=1  # Wird benötigt, weil getops ein weiteres mal verwendet wird!
@@ -397,16 +397,17 @@ while getopts "$optspec" opt ; do
     ;;
     a) P=("${arg[@]}") ;;           # Alle Profile
     c) ;;                           # Wurde beim Start ausgewertet
-    m) # Eigene Verzeichnisse an das Skript übergeben
-      for i in "$@" ; do            # Letzter Pfad als Zielverzeichnis
-        [[ -d "$i" ]] && TARGET="$i"
-      done
-      for i in "$@" ; do            # Alle übergebenen Verzeichnisse außer $TARGET als Quelle
-        if [[ -d "$i" && "$i" != "$TARGET" ]] ; then
+    m) # Eigene Verzeichnisse an das Skript übergeben (Letzter Pfad als Zielverzeichnis)
+      [[ -d "${@: -1}" ]] && { TARGET="${@: -1}" ;} \
+        || { echo -e "$msgERR \"${@: -1}\" ist kein Verzeichnis!" >&2 ; f_exit 1 ;}
+      for i in "${@:1:${#}-1}" ; do  # Alle übergebenen Verzeichnisse außer $TARGET als Quelle
+        if [[ -d "$i" ]] ; then
           f_remove_slash i          # "/" am Ende entfernen
           MAN_SOURCE+=("$i")        # Verzeichnis anhängen
         fi
       done
+      [[ -z "${MAN_SOURCE[*]}" ]] && \
+        { echo -e "$msgERR Keine Quellverzeichnisse gefunden!" >&2 ; f_exit 1 ;}
       f_remove_slash TARGET         # "/" am Ende entfernen
       P='customBak' ; TITLE='Benutzerdefinierte Sicherung'
       LOG="${TARGET}/${TITLE}_log.txt"
@@ -606,7 +607,7 @@ for PROFIL in "${P[@]}" ; do
   [[ ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" >/dev/null || f_exit 1 ;}
   [[ -e "${TMPDIR}/.stopflag" ]] && rm --force "${TMPDIR}/.stopflag" &>/dev/null
   unset -v 'FINISHEDTEXT' 'MFS_PID'
-  printf -v dt '%(%F %R)T' || dt="$(date +'%F %R')"  # Datum für die erste Zeile im Log
+  printf -v dt '%(%F %R)T' -1 || dt="$(date +'%F %R')"  # Datum für die erste Zeile im Log
 
   case $MODE in
     N) # Normale Sicherung (inkl. customBak)
@@ -649,7 +650,7 @@ for PROFIL in "${P[@]}" ; do
       rm --recursive --force "${TARGET}/tmp_????-??-??*" &>/dev/null
 
       # Zielverzeichnis ermitteln: Wenn erste Sicherung des Tages, dann ohne Uhrzeit
-      printf -v dt2 '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' \
+      printf -v dt2 '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' -1 \
         || dt2="$(date +'%Y-%m-%d') $(date +'%Y-%m-%d_%H-%M')"
       for TODAY in $dt2 ; do
         [[ ! -e "${TARGET}/${TODAY}" ]] && break
@@ -834,7 +835,7 @@ for PROFIL in "${P[@]}" ; do
       echo "$msgERR Zusätzliche Sicherung wird im Snapshot-Modus nicht unterstützt!\e[0m" >&2
       sleep 10
     else
-      printf -v dt '%(%Y%m%d_%H%M%S)T'  # Datum und Zeit (20171017_131601)
+      printf -v dt '%(%Y%m%d_%H%M%S)T' -1  # Datum und Zeit (20171017_131601)
       [[ "${SOURCE:0:1}" == '/' ]] && EXTRA_SOURCE="${SOURCE#\/}"  # Führendes "/" entfernen
       echo "Starte zusätzliche Sicherung nach ${EXTRA_TARGET}…" >> "$LOG"
       echo -e "$msgINF Starte zusätzliche Sicherung nach:\n  \"${EXTRA_TARGET}\""
@@ -902,7 +903,7 @@ for PROFIL in "${P[@]}" ; do
 
   [[ ${RC:-0} -ne 0 ]] && ERRTEXT="\e[91mmit Fehler ($RC) \e[0;1m"
   echo -e -n "\a\n\n${msgINF} \e[1mProfil \"${TITLE}\" wurde ${ERRTEXT}${FINISHEDTEXT:=abgeschlossen}\e[0m"
-  printf ' (%(%x %X)T)\n'  # Datum und Zeit
+  printf ' (%(%x %X)T)\n' -1  # Datum und Zeit
   echo -e "  Weitere Informationen sind in der Datei:\n  \"${LOG}\" gespeichert.\n"
   if [[ -s "$ERRLOG" ]] ; then  # Existiert und ist nicht Leer
     if [[ $(stat -c %Y "$ERRLOG") -gt $(stat -c %Y "$TMPDIR") ]] ; then  # Fehler-Log merken, wenn neuer als "$TMPDIR"
