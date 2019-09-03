@@ -999,15 +999,17 @@ if [[ -n "$MAILADRESS" ]] ; then
   # //TODO Profile anzeigen
 
   for i in "${!TARGETS[@]}" ; do
-    if [[ "$SHOWUSAGE" == 'true' ]] ; then  # Anzeige ist abschaltbar in der *.conf
-      mapfile -t < <(df -Ph "${TARGETS[i]}")  # Ausgabe von df in Array (Zwei Zeilen)
-      TARGETLINE=(${MAPFILE[1]}) ; TARGETDEV=${TARGETLINE[0]}  # Erstes Element ist das Device
-      if [[ ! "${TARGETDEVS[*]}" =~ $TARGETDEV ]] ; then
-        TARGETDEVS+=("$TARGETDEV")
-        echo -e "\n==> Status des Sicherungsziels (${TARGETDEV}):" >> "$MAILFILE"
-        echo -e "${MAPFILE[0]}\n${MAPFILE[1]}" >> "$MAILFILE"
-      fi
-    fi  # SHOWUSAGE
+    if [[ -d "${TARGETS[i]}" ]] ; then  # Nur wenn das Verzeichnis existiert
+      if [[ "$SHOWUSAGE" == 'true' ]] ; then  # Anzeige ist abschaltbar in der *.conf
+        mapfile -t < <(df -Ph "${TARGETS[i]}")  # Ausgabe von df in Array (Zwei Zeilen)
+        TARGETLINE=(${MAPFILE[1]}) ; TARGETDEV=${TARGETLINE[0]}  # Erstes Element ist das Device
+        if [[ ! "${TARGETDEVS[*]}" =~ $TARGETDEV ]] ; then
+          TARGETDEVS+=("$TARGETDEV")
+          echo -e "\n==> Status des Sicherungsziels (${TARGETDEV}):" >> "$MAILFILE"
+          echo -e "${MAPFILE[0]}\n${MAPFILE[1]}" >> "$MAILFILE"
+        fi
+      fi  # SHOWUSAGE
+    fi  # -d TARGETS[i]
     if [[ "$SHOWCONTENT" == 'true' ]] ; then  # Auflistung ist abschaltbar in der *.conf
       LOGDIR="${LOGFILES[i]%/*}" ; [[ "${LOGDIRS[*]}" =~ $LOGDIR ]] && continue
       LOGDIRS+=("$LOGDIR")
