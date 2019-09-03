@@ -10,7 +10,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=190507
+VERSION=190903
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -123,6 +123,7 @@ f_settings() {
         # RSYNC_OPT, RSYNC_OPT_SNAPSHOT und MOUNT wieder herstelen
         [[ -n "${_RSYNC_OPT[*]}" ]] && { RSYNC_OPT=("${_RSYNC_OPT[@]}") ; unset -v '_RSYNC_OPT' ;}
         [[ -n "$_RSYNC_OPT_SNAPSHOT" ]] && { RSYNC_OPT_SNAPSHOT=("${_RSYNC_OPT_SNAPSHOT[@]}") ; unset -v '_RSYNC_OPT_SNAPSHOT' ;}
+        [[ -n "$_RSYNC_OPT_DAEMON" ]] && { RSYNC_OPT_DAEMON=("${_RSYNC_OPT_DAEMON[@]}") ; unset -v '_RSYNC_OPT_DAEMON' ;}
         [[ -n "$_MOUNT" ]] && { MOUNT="$_MOUNT" ; unset -v '_MOUNT' ;}
         [[ "$MOUNT" == '0' ]] && unset -v 'MOUNT'  # MOUNT war nicht gesetzt
         TITLE="${title[i]}"   ; ARG="${arg[i]}"       ; MODE="${mode[i]}"
@@ -168,6 +169,9 @@ f_settings() {
           ;;
           M*) MODE='M' ; MODE_TXT='Multi rsync'  # Verwendet rsync-Optionen aus dem "normalen" Modus
             [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[i]}) ;}
+          ;;
+          D*) MODE='D' ; MODE_TXT='=> rsync-Daemon'  # rsync-Optionen für den Daemon Modus
+            [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT_DAEMON=("${RSYNC_OPT_DAEMON[@]}") ; RSYNC_OPT_DAEMON=(${rsync_opt[i]}) ;}
           ;;
           *) MODE='N' ; MODE_TXT='Normal'  # Vorgabe: Normaler Modus
             [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[i]}) ;}
@@ -516,8 +520,8 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
             else
               echo -e "$msgERR Keine gültige Zahl!\e[0m (-d $DEL_OLD_BACKUP)" >&2 ; f_exit 1
             fi
-         ;;
-         S) echo -e "$msgWRN Löschen von alten Dateien wird im Snapshot-Modus \e[1mnicht\e[0m unterstützt (-d $DEL_OLD_BACKUP)\e[0m" ;;
+      ;;
+      [DS]) echo -e "$msgWRN Löschen von alten Dateien wird nur im Normal- und Multi-Modus unterstützt (-d $DEL_OLD_BACKUP)\e[0m" ;;
     esac
   fi
   if [[ -n "$DEL_OLD_SOURCE" ]] ; then
@@ -527,8 +531,8 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
             else
               echo -e "$msgERR Keine gültige Zahl!\e[0m (--del-old-source $DEL_OLD_SOURCE)" >&2 ; f_exit 1
             fi
-         ;;
-         S) echo -e "$msgWRN Löschen von Quelldateien wird im Snapshot-Modus \e[1mnicht\e[0m unterstützt (--del-old-source)\e[0m" ;;
+      ;;
+      [DS]) echo -e "$msgWRN Löschen von Quelldateien wird nur im Normal- und Multi-Modus unterstützt (--del-old-source)\e[0m" ;;
     esac
   fi
   if [[ -n "$EXTRA_TARGET" ]] ; then
@@ -604,7 +608,7 @@ for PROFIL in "${P[@]}" ; do
 
   ERRLOG="${LOG%.*}.err.log"  # Fehlerlog im Logverzeichnis der Sicherung
   # Ggf. Zielverzeichnis erstellen
-  [[ ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" >/dev/null || f_exit 1 ;}
+  [[ "$MODE" != 'D' && ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" >/dev/null || f_exit 1 ;}
   [[ -e "${TMPDIR}/.stopflag" ]] && rm --force "${TMPDIR}/.stopflag" &>/dev/null
   unset -v 'FINISHEDTEXT' 'MFS_PID'
   printf -v dt '%(%F %R)T' -1 || dt="$(date +'%F %R')"  # Datum für die erste Zeile im Log
@@ -644,6 +648,18 @@ for PROFIL in "${P[@]}" ; do
           [[ -n "$DEL_OLD_SOURCE" ]] && f_del_old_source "$SOURCE" "$R_TARGET"
         fi  # -e .stopflag
       fi  # SKIP_FULL
+    ;;
+    D) # Sicherung im Daemon Modus (Verbindung zu rsync-Server)
+       # Experimentell! Ungetestet!
+
+      f_countdown_wait  # Countdown vor dem Start anzeigen
+
+      # Sicherung mit rsync starten
+      echo "==> $dt - $SELF_NAME [#${VERSION}] - Start:" >> "$LOG"  # Sicher stellen, dass ein Log existiert
+      echo "rsync ${RSYNC_OPT_DAEMON[*]} --log-file=$LOG --exclude-from=$EXFROM $SOURCE $TARGET" >> "$LOG"
+      echo -e "$msgINF Starte Sicherung (rsync)…"
+      rsync "${RSYNC_OPT_DAEMON[@]}" --log-file="$LOG" --exclude-from="$EXFROM" "${SOURCE}/" "$TARGET" >/dev/null 2>> "$ERRLOG"
+      RC=$? ; [[ $RC -ne 0 ]] && { RSYNCRC+=("$RC") ; RSYNCPROF+=("$TITLE") ;}  # Profilname und Fehlercode merken
     ;;
     S) # Snapshot Sicherung
       # Temporäre Verzeichnisse, die von fehlgeschlagenen Sicherungen noch vorhanden sind löschen

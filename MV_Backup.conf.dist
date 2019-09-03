@@ -21,6 +21,10 @@ RSYNC_OPT+=('--backup' '--verbose' '--delete' '--numeric-ids' '--stats')
 # Optionen für rsync im Modus "Snapshot"; Verzeichnisse dürfen nicht angegeben werden
 RSYNC_OPT_SNAPSHOT=('--archive' '--verbose')  # Parameter für den Modus "Snapshot"
 
+# Optionen für rsync im Modus "Daemon"; Verzeichnisse dürfen nicht angegeben werden
+RSYNC_OPT_DAEMON=('--partial' '--progress' '--protect-args' '--archive')
+RSYNC_OPT_DAEMON+=('--verbose' '--numeric-ids' '--stats' '--human-readable')
+
 # [optional] Einhängepunkt der externen Festplatte
 # Vor der Sicherung wird geprüft, ob die externe Festplatte eingebunden ist
 # Geeignet, wenn alle Profile das Sicherungsziel im selben Einhängepunkt haben
@@ -119,6 +123,7 @@ POST_ACTION=''
 
 # [optional] Modus für die Sicherung. Parameter "Snapshot" verwenden um Snapshots zu erstellen
 # Z.B. 'Snapshot', 'snapshot' oder 'snap' für den Snapshot-Modus
+# Z.B. 'Daemon', 'daemon' oder 'd' für den Daemon-Modus
 # Z.B. 'Multi', 'multi' oder 'm' für den experimentellem Multi rsync-Modus
 # '', 'default' oder 'Normal' für den Normal-Modus
 #mode[nr]=''             # Modus (Normal, Snapshot oder Multi)
