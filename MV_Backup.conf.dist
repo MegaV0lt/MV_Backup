@@ -7,7 +7,7 @@
 ############################### ALLGEMEINE KONFIGURATION ################################
 
 ### Hinweis zum ausfüllen: Wenn Variablen ($) verwendet werden,
-### dann in doppelten " ansonsten können einfache ' benutz werden
+### dann in doppelten " ansonsten können einfache ' benutzt werden
 
 # Datum in Variable speichern (Für Logs usw.)
 printf -v DT_TODAY '%(%F)T'  # JJJJ-MM-DD (2017-10-19)
@@ -28,7 +28,7 @@ RSYNC_OPT_DAEMON+=('--verbose' '--numeric-ids' '--stats' '--human-readable')
 # [optional] Einhängepunkt der externen Festplatte
 # Vor der Sicherung wird geprüft, ob die externe Festplatte eingebunden ist
 # Geeignet, wenn alle Profile das Sicherungsziel im selben Einhängepunkt haben
-# ACHTUNG: Bei verschiedenen Sicherungszielnen den Parameter mount[nr] in
+# ACHTUNG: Bei verschiedenen Sicherungszielen den Parameter mount[nr] in
 # der Profilkonfiguration verwenden
 #MOUNT='/mnt/usbdisk'     # Einhängepunkt des Sicherungsziels (Beispiel)
 #MOUNT='/mnt/remote_ftp'  # Einhängepunkt für externen FTP (Muss in der fstab definiert sein )
@@ -37,7 +37,7 @@ RSYNC_OPT_DAEMON+=('--verbose' '--numeric-ids' '--stats' '--human-readable')
 # Ordner, in den gelöschte Dateien kopiert werden (--backup-dir=)
 # Die Variable $TARGET, in der das Zielverzeichnis gespeichert ist, ist hierbei nützlich
 f_bak_dir() {  # Letzter Ordner im Format: JJJJ-MM-TT
-  BAK_DIR="${TARGET}/Geloeschte Dateien/${DT_TODAY}"  
+  BAK_DIR="${TARGET}/Geloeschte Dateien/${DT_TODAY}"
 }
 
 # [optional] Ordner in dem die Sicherung gespeichert wird. Vorgabe ist "_DATEIEN"
@@ -85,7 +85,7 @@ SHOWERRORS='true'   # Zeige Profile mit Fehlern (rsync Fehlercode)
 SHOWDURATION='true' # Zeige Dauer der Sicherung
 
 # Format des Archivs (Logdateien). Beispiele: tar.xz, tar.gz, tar.bz2, zip
-LOGARCH_FMT='tar.xz'  # Vorgabe ist tar.xz 
+LOGARCH_FMT='tar.xz'  # Vorgabe ist tar.xz
 
 # Max. Größe des gepackten Logarchivs in Byte, das per Mail gesendet wird.
 # Bei MAXLOGSIZE=0 wird kein Archiv angehängt. Betrifft nur das Archiv!
@@ -209,7 +209,7 @@ POST_ACTION=''
 #extra_mount[nr]=''
 
 # Zielverzeichnis. Wenn leer oder auskommentiert, wird keine extra Sicherung vorgenommen.
-# Muss eindeutig sein! Pfade nicht mehrfach verwenden! 
+# Muss eindeutig sein! Pfade nicht mehrfach verwenden!
 #extra_target[nr]="${extra_mount[nr]}/mnt/Data2/Backup"
 
 # Anzahl der zusätzlichen Sicherungen, die behalten werden soll. 0 behält nur die aktuelle Version
