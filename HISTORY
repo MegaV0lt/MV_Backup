@@ -101,4 +101,8 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
       Bei manchen Sicherungszielen werden möglicherweise die Dateizugriffsrechte nicht
       gesetz. Wenn gesetzt, werden die Dateizugriffsrechte in einer Datei gesichert
       Beispiel: save_acl[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.acs"
-
+03.09.2019
+ Neu: Daemon-Modus zur Sicherung auf einem rsync-Server
+      Der rsync-Daemon-Modus ist noch UNGETESTET udn EXPERIMENTELL
+      Einige Optionen wie Backup (Gelöschte Dateien aufbewahren, ...) sind nicht
+      verfügbar. 
