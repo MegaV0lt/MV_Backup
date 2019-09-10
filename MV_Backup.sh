@@ -2,7 +2,8 @@
 # = = = = = = = = = = = = =  MV_Backup.sh - RSYNC BACKUP  = = = = = = = = = = = = = = = #
 #                                                                                       #
 # Author: MegaV0lt, http://j.mp/cQIazU                                                  #
-# Forum: http://j.mp/1TblNNj  GIT: http://j.mp/2deM7dk                                  #
+# Forum: http://j.mp/1TblNNj                                                            #
+# GIT: https://github.com/MegaV0lt/MV_Backup                                            #
 # Basiert auf dem RSYNC-BACKUP-Skript von JaiBee (Siehe HISTORY)                        #
 #                                                                                       #
 # Alle Anpassungen zum Skript, kann man in der HISTORY und in der .conf nachlesen. Wer  #
@@ -10,7 +11,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=190903
+VERSION=190909
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -186,7 +187,7 @@ f_settings() {
 
 f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
   local dt
-  printf -v dt '%(%F %R.%S)T' -1 || dt="$(date +'%F %R.%S')"
+  printf -v dt '%(%F %R.%S)T' -1 
   echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
   { echo "${dt}: Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
@@ -205,7 +206,7 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
   local dt file srcdir="$1" targetdir="$2"
   [[ $# -ne 2 ]] && return 1  # Benötigt Quelle und Ziel als Parameter
   cd "$srcdir" || return 1    # Bei Fehler abbruch
-  printf -v dt '%(%F %R.%S)T' -1 || dt="$(date +'%F %R.%S')"
+  printf -v dt '%(%F %R.%S)T' -1 
   echo "Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…"
   echo "${dt}: Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…" >> "$LOG"
   # Dateien auf Quelle die älter als $DEL_OLD_SOURCE Tage sind einlesen
@@ -571,8 +572,7 @@ for PROFIL in "${P[@]}" ; do
     # "/" am Ende entfernen
     f_remove_slash SOURCE ; f_remove_slash TARGET ; f_remove_slash BAK_DIR
 
-    # Festplatte (Ziel) eingebunden?  //TODO: Bessere Methode für grep finden
-    # if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* && ! $(grep "$MOUNT" /proc/mounts &>/dev/null) ]] ; then
+    # Festplatte (Ziel) eingebunden?
     if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* ]] ; then
       if ! mountpoint --quiet "$MOUNT" ; then
         echo -e -n "$msgINF Versuche Sicherungsziel (${MOUNT}) einzuhängen…"
@@ -611,7 +611,7 @@ for PROFIL in "${P[@]}" ; do
   [[ "$MODE" != 'D' && ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" >/dev/null || f_exit 1 ;}
   [[ -e "${TMPDIR}/.stopflag" ]] && rm --force "${TMPDIR}/.stopflag" &>/dev/null
   unset -v 'FINISHEDTEXT' 'MFS_PID'
-  printf -v dt '%(%F %R)T' -1 || dt="$(date +'%F %R')"  # Datum für die erste Zeile im Log
+  printf -v dt '%(%F %R)T' -1  # Datum für die erste Zeile im Log
 
   case $MODE in
     N) # Normale Sicherung (inkl. customBak)
@@ -666,8 +666,7 @@ for PROFIL in "${P[@]}" ; do
       rm --recursive --force "${TARGET}/tmp_????-??-??*" &>/dev/null
 
       # Zielverzeichnis ermitteln: Wenn erste Sicherung des Tages, dann ohne Uhrzeit
-      printf -v dt2 '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' -1 \
-        || dt2="$(date +'%Y-%m-%d') $(date +'%Y-%m-%d_%H-%M')"
+      printf -v dt2 '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' -1
       for TODAY in $dt2 ; do
         [[ ! -e "${TARGET}/${TODAY}" ]] && break
       done
@@ -936,8 +935,7 @@ SCRIPT_TIMING[1]=$SECONDS  # Zeit nach der Sicherung mit rsync/tar/getfacl (Seku
 # --- eMail senden ---
 if [[ -n "$MAILADRESS" ]] ; then
   # Variablen
-  printf -v ARCH 'Logs_%(%F-%H%M)T'."${LOGARCH_FMT:=tar.xz}" \
-    || ARCH="Logs_$(date +'%F-%H%M').${LOGARCH_FMT:=tar.xz}"  # Archiv mit Datum und Zeit (kein :)
+  printf -v ARCH 'Logs_%(%F-%H%M)T'."${LOGARCH_FMT:=tar.xz}"  # Archiv mit Datum und Zeit (kein :)
   ARCHIV="${TMPDIR}/${ARCH}"              # Archiv mit Pfad
   MAILFILE="${TMPDIR}/~Mail.txt"          # Text für die eMail
   SUBJECT="Sicherungs-Bericht von $SELF_NAME auf ${HOSTNAME^^}"  # Betreff der Mail
