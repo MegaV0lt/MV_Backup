@@ -175,6 +175,7 @@ POST_ACTION=''
 
 # [optional] Logdatei, in der die Ausgabe von rsync gespeichert wird
 # Nützlich kann "$DT_TODAY" oder "$DT_NOW" sein, um separate Logs zu erhalten
+# HInweis: Im rsync-Daemon-Modus muss das log lokal erstellt werden!
 # Format: DT_TODAY=JJJJ-MM-DD DT_NOW=JJJJ-MM-DD_HHMM
 #log[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.log"
 
