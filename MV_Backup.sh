@@ -58,6 +58,7 @@ f_exit() {  # Beenden und aufräumen $1 = ExitCode
   [[ "$EXIT" -eq 2 ]] && echo -e "$msgERR (${5:-x}) in Zeile $3 ($4):\e[0m\n$2\n" >&2
   if [[ "$EXIT" -ge 1 ]] ; then
     set -o posix ; set  > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
+    echo -e "$msgINF Skript- und Umgebungsvariablen wurden in \"/tmp/${SELF_NAME%.*}.env\" gespeichert!"
     [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript ohne root-Rechte gestartet!"
   fi
   [[ -n "${exfrom[*]}" ]] && rm "${exfrom[@]}" &>/dev/null
