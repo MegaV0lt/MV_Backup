@@ -493,7 +493,12 @@ for PROFIL in "${P[@]}" ; do  # Anzeige der Einstellungen
   f_settings
 
   # Wurden der Option -p gültige Argument zugewiesen?
-  [[ "$PROFIL" != "$ARG" && "$PROFIL" != 'customBak' ]] && { echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" >&2 ; f_help ;}
+  if [[ "$PROFIL" != "$ARG" && "$PROFIL" != 'customBak' ]] ; then
+    notset='\e[1;41m -LEER- \e[0m'  # Anzeige, wenn nicht gesetzt
+    echo -e "$msgERR Option -p wurde nicht korrekt definiert!\e[0m\n" >&2
+    echo -e " Profil:        \"${TITLE:-$notset}\"\n Parameter:     \"${ARG:-$notset}\""
+    echo -e " Variable PROFIL: \"${PROFIL:-$notset}\"" ; f_exit 1
+  fi
 
   # Konfiguration zu allen gewählten Profilen anzeigen
   # Länge des Strings [80] plus alle Steuerzeichen [14] (ohne \)
