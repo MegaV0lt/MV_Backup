@@ -51,8 +51,8 @@ f_bak_dir() {  # Letzter Ordner im Format: JJJJ-MM-TT
 #PATH="/opt/bin:${PATH}"  # Am Ende angehängter Pfad: PATH="${PATH}:/opt/bin"
 
 # [optional] Zeitabstand in Sekunden, in der der Hintergrundprozess (siehe minfree_bg[])
-# den freien Speicherplatz auf dem Ziel überprüft. Vorgabe ist 300 Sekunden (5 Minuten)
-#MFS_TIMEOUT=300  # Zeit in Sekunden
+# den freien Speicherplatz auf dem Ziel überprüft. Vorgabe ist 5 Minuten
+#MFS_TIMEOUT=$((5*60))  # Zeit in Sekunden
 
 ############################### EMAIL KONFIGURATION #####################################
 
@@ -77,12 +77,13 @@ MAILADRESS=''
 #MAILONLYERRORS='true'  # Kommentarzeichen (#) entfernen zum aktivieren
 
 ### Einstellungen für den eMail-Bericht ###
-SHOWOS='true'       # Zeige verwendetes Betriebssysten (/etc/os-release)
-SHOWOPTIONS='true'  # Zeige die verwendeten Optionen beim Skriptaufruf
-SHOWUSAGE='true'    # Zeige die Belegung des Sicherungsziels (df -Ph)
-SHOWCONTENT='true'  # Zeige Inhalt der Sichrungsziele (Oberste Ebene)
-SHOWERRORS='true'   # Zeige Profile mit Fehlern (rsync Fehlercode)
-SHOWDURATION='true' # Zeige Dauer der Sicherung
+SHOWOS='true'            # Zeige verwendetes Betriebssysten (/etc/os-release)
+SHOWOPTIONS='true'       # Zeige die verwendeten Optionen beim Skriptaufruf
+SHOWUSAGE='true'         # Zeige die Belegung des Sicherungsziels (df -Ph)
+SHOWCONTENT='true'       # Zeige Inhalt der Sichrungsziele (Oberste Ebene)
+SHOWERRORS='true'        # Zeige Profile mit Fehlern (rsync Fehlercode)
+SHOWDURATION='true'      # Zeige Dauer der Sicherung
+SHOwUSEDPROFILES='true'  # Anzeige der verwendeten Profile (Name)
 
 # Format des Archivs (Logdateien). Beispiele: tar.xz, tar.gz, tar.bz2, zip
 LOGARCH_FMT='tar.xz'  # Vorgabe ist tar.xz
@@ -175,7 +176,7 @@ POST_ACTION=''
 
 # [optional] Logdatei, in der die Ausgabe von rsync gespeichert wird
 # Nützlich kann "$DT_TODAY" oder "$DT_NOW" sein, um separate Logs zu erhalten
-# HInweis: Im rsync-Daemon-Modus muss das log lokal erstellt werden!
+# Hinweis: Im rsync-Daemon-Modus muss das Log lokal erstellt werden!
 # Format: DT_TODAY=JJJJ-MM-DD DT_NOW=JJJJ-MM-DD_HHMM
 #log[nr]="${target[nr]}/${DT_TODAY}_${title[nr]}.log"
 
