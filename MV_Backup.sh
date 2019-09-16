@@ -11,7 +11,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=190909
+VERSION=190916
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -188,7 +188,7 @@ f_settings() {
 
 f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
   local dt
-  printf -v dt '%(%F %R.%S)T' -1 
+  printf -v dt '%(%F %R.%S)T' -1
   echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
   { echo "${dt}: Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
     find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
@@ -207,7 +207,7 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
   local dt file srcdir="$1" targetdir="$2"
   [[ $# -ne 2 ]] && return 1  # Benötigt Quelle und Ziel als Parameter
   cd "$srcdir" || return 1    # Bei Fehler abbruch
-  printf -v dt '%(%F %R.%S)T' -1 
+  printf -v dt '%(%F %R.%S)T' -1
   echo "Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…"
   echo "${dt}: Lösche Dateien aus ${srcdir}, die älter als $DEL_OLD_SOURCE Tage sind…" >> "$LOG"
   # Dateien auf Quelle die älter als $DEL_OLD_SOURCE Tage sind einlesen
@@ -916,8 +916,8 @@ for PROFIL in "${P[@]}" ; do
     fi  # MODE == S
   fi  # -n EXTRA_TARGET
 
-  # Log-Datei und Ziel merken für Mail-Versand
-  [[ -n "$MAILADRESS" ]] && { LOGFILES+=("$LOG") ; TARGETS+=("$TARGET") ;}
+  # Log-Datei, Ziel und Name des Profils merken für Mail-Versand
+  [[ -n "$MAILADRESS" ]] && { LOGFILES+=("$LOG") ; TARGETS+=("$TARGET") ; USEDPROFILES+=("$TITLE") ;}
 
   # Zuvor eingehängte FTP-Quelle wieder aushängen
   [[ -n "$UMOUNT_FTP" ]] && { umount "$FTPMNT" ; unset -v 'UMOUNT_FTP' ;}
@@ -935,7 +935,7 @@ for PROFIL in "${P[@]}" ; do
     rm "$ERRLOG" &>/dev/null  # Leeres Log löschen
   fi
   unset -v 'RC' 'ERRTEXT'  # $RC und $ERRTEXT zurücksetzen
-done # for PROFILE
+done # for PROFIL
 SCRIPT_TIMING[1]=$SECONDS  # Zeit nach der Sicherung mit rsync/tar/getfacl (Sekunden)
 
 # --- eMail senden ---
@@ -1000,7 +1000,12 @@ if [[ -n "$MAILADRESS" ]] ; then
 
   [[ "$SHOWOPTIONS" == 'true' ]] && echo -e "\n==> Folgende Optionen wurden verwendet:\n$*" >> "$MAILFILE"
 
-  # //TODO Profile anzeigen
+  if [[ "$SHOWUSEDPROFILES" == 'true' ]] ; then
+    echo -e "\n==> Folgende Profile wurden zur Sicherung ausgewählt:" >> "$MAILFILE"
+    for i in "${!USEDPROFILES[@]}" ; do
+      echo "${USEDPROFILES[i]}" >> "$MAILFILE"
+    done
+  fi  # SHOWUSEDPROFILES
 
   for i in "${!TARGETS[@]}" ; do
     if [[ -d "${TARGETS[i]}" ]] ; then  # Nur wenn das Verzeichnis existiert
