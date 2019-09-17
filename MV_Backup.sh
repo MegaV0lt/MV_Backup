@@ -11,7 +11,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=190916
+VERSION=190917
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -91,9 +91,13 @@ f_help() {
   echo -e "        \e[1m$0 \e[34m-m\e[0m \e[1;36mQUELLE(n)\e[0m \e[1;36mZIEL\e[0m"
   echo
   echo -e '\e[37;100m Erforderlich \e[0m'
-  for i in "${!arg[@]}" ; do
-    echo -e "  \e[1;34m-p\e[0m \e[1;36m${arg[i]}\e[0m\tProfil \"${title[i]}\""
-  done
+  if [[ -n "$CONFLOADED" ]] ; then
+    for i in "${!arg[@]}" ; do
+      echo -e "  \e[1;34m-p\e[0m \e[1;36m${arg[i]}\e[0m\tProfil \"${title[i]}\""
+    done
+  else
+    echo -e "  \e[1;34m-p\e[0m \e[1;36mx\e[0m\tProfil (arg[nr]=)"
+  fi  # CONFLOADED
   echo -e ' oder\n  \e[1;34m-a\e[0m\tAlle Sicherungs-Profile'
   echo -e ' oder\n  \e[1;34m-m\e[0m\tVerzeichnisse manuell angeben'
   echo
@@ -101,7 +105,7 @@ f_help() {
   echo -e '  \e[1;34m-c\e[0m \e[1;36mBeispiel.conf\e[0m Konfigurationsdatei angeben (Pfad und Name)'
   echo -e '  \e[1;34m-e\e[0m \e[1;36mmy@email.de\e[0m   Sendet eMail inkl. angehängten Log(s)'
   echo -e '  \e[1;34m-f\e[0m    eMail nur senden, wenn Fehler auftreten (-e muss angegeben werden)'
-  echo -e '  \e[1;34m-d\e[0m \e[1;36mx\e[0m  Sicherungs-Dateien die älter als x Tage sind löschen'
+  echo -e '  \e[1;34m-d\e[0m \e[1;36mx\e[0m  Gelöschte Dateien die älter als x Tage sind löschen'
   echo -e '  \e[1;34m-s\e[0m    Nach Beendigung automatisch herunterfahren (benötigt u. U. Root-Rechte)'
   echo -e '  \e[1;34m-h\e[0m    Hilfe anzeigen'
   echo
@@ -321,20 +325,22 @@ if [[ ! -x "$SELF" ]] ; then
 fi
 
 # --- LOCKING ---
-PIDFILE="/var/run/${SELF_NAME%.*}.pid"
-if [[ -f "$PIDFILE" ]] ; then  # PID-Datei existiert
-  PID="$(< "$PIDFILE")"        # PID einlesen
-  if ps --pid "$PID" &>/dev/null ; then  # Skript läuft schon!
-    echo -e "$msgERR Das Skript läuft bereits!\e[0m (PID: $PID)" >&2
-    f_exit 4                   # Beenden aber PID-Datei nicht löschen
-  else  # Prozess nicht gefunden. PID-Datei überschreiben
+if [[ $EUID -eq 0 ]] ; then  # Nur wenn 'root'
+  PIDFILE="/var/run/${SELF_NAME%.*}.pid"
+  if [[ -f "$PIDFILE" ]] ; then  # PID-Datei existiert
+    PID="$(< "$PIDFILE")"        # PID einlesen
+    if ps --pid "$PID" &> /dev/null ; then  # Skript läuft schon!
+      echo -e "$msgERR Das Skript läuft bereits!\e[0m (PID: $PID)" >&2
+      f_exit 4                   # Beenden aber PID-Datei nicht löschen
+    else  # Prozess nicht gefunden. PID-Datei überschreiben
+      echo "$$" > "$PIDFILE" \
+        || { echo -e "$msgWRN Die PID-Datei konnte nicht überschrieben werden!\e[0m" >&2 ;}
+    fi
+  else                           # PID-Datei existiert nicht. Neu anlegen
     echo "$$" > "$PIDFILE" \
-      || { echo -e "$msgWRN Die PID-Datei konnte nicht überschrieben werden!\e[0m" >&2 ;}
-  fi
-else                           # PID-Datei existiert nicht. Neu anlegen
-  echo "$$" > "$PIDFILE" \
-    || { echo -e "$msgWRN Die PID-Datei konnte nicht erzeugt werden!\e[0m" >&2 ;}
-fi
+      || { echo -e "$msgWRN Die PID-Datei konnte nicht erzeugt werden!\e[0m" >&2 ;}
+  fi  # -f PIDFILE
+fi  # EUID
 
 # --- KONFIGURATION LADEN ---
 # Testen, ob Konfiguration angegeben wurde (-c …)
@@ -355,7 +361,7 @@ done
 # Konfigurationsdatei laden [Wenn Skript=MV_Backup.sh Konfig=MV_Backup.conf]
 if [[ -z "$CONFLOADED" ]] ; then  # Konfiguration wurde noch nicht geladen
   # Suche Konfig im aktuellen Verzeichnis, im Verzeichnis des Skripts und im eigenen etc
-  CONFIG_DIRS=('.' "${SELF%/*}" "${HOME}/etc") ; CONFIG_NAME="${SELF_NAME%.*}.conf"
+  CONFIG_DIRS=('.' "${SELF%/*}" "${HOME}/etc" "${0%/*}") ; CONFIG_NAME="${SELF_NAME%.*}.conf"
   for dir in "${CONFIG_DIRS[@]}" ; do
     CONFIG="${dir}/${CONFIG_NAME}"
     if [[ -f "$CONFIG" ]] ; then
@@ -384,7 +390,7 @@ echo -e '\e[44m \e[0m Original: 2011 by JaiBee, http://www.321tux.de/'
 echo -e "\e[46m \e[0m $CONFLOADED Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
 [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript ohne root-Rechte gestartet!"
 
-# Symlink /dev/fd fehlt bei manchen Systemen (BSD, OpenWRT, ...). http://j.mp/2zwYkoG
+# Symlink /dev/fd fehlt bei manchen Systemen (BSD, OpenWRT, ...). https://bugzilla.redhat.com/show_bug.cgi?id=814850
 if [[ ! -L /dev/fd ]] ; then
   echo -e "$msgWRN Der Symbolische Link \"/dev/fd -> /proc/self/fd\" fehlt!"
   echo -e "$msgINF Erstelle Symbolischen Link \"/dev/fd\"…"
