@@ -106,3 +106,6 @@ Der Betrag kann frei gewählt werden. Vorschlag: 2 EUR
       Der rsync-Daemon-Modus ist noch UNGETESTET udn EXPERIMENTELL
       Einige Optionen wie Backup (Gelöschte Dateien aufbewahren, ...) sind nicht
       verfügbar. 
+19.09.2019
+ Neu: Option SHOWUSEDPROFILES zur Anzeige der verwendeten Profile im Mail-Bericht
+ 
