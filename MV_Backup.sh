@@ -309,6 +309,7 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
 }
 
 f_source_config() {  # Konfiguration laden
+  # shellcheck source=MV_Backup.conf
   [[ -n "$1" ]] && { source "$1" || f_exit 5 $? ;}
 }
 
