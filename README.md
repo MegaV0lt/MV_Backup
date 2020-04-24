@@ -5,7 +5,8 @@ RSYNC Backup Skript
 
 Ein Backup-Skript für die Linux-Konsole (Bash/Terminal)
 
-Weiterentwicklung des rsync-Backup-Skripts von 321tux.de. Zusätzliche Funktionen sind unter Anderem:
+Weiterentwicklung des rsync-Backup-Skripts von JaiBee, www.321tux.de
+Zusätzliche Funktionen sind unter Anderem:
 - Automatisches Ein- und Aushängen des Sicherungs-Ziels, wenn in der fstab vorhanden (noauto)
 - Entfernen von alten Sicherungen und Log-Dateien nach einstellbarer Zeit (Tage)
 - Konfiguration ausgelagert, um den Einsatz auf mehreren Systemen zu vereinfachen
