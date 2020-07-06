@@ -10,8 +10,8 @@
 ### dann in doppelten " ansonsten können einfache ' benutzt werden
 
 # Datum in Variable speichern (Für Logs usw.)
-printf -v DT_TODAY '%(%F)T'  # JJJJ-MM-DD (2017-10-19)
-printf -v DT_NOW '%(%F_%H%M)T'  # JJJJ-MM-DD_HHMM (2017-10-19_1107)
+printf -v DT_TODAY '%(%F)T' -1  # JJJJ-MM-DD (2017-10-19)
+printf -v DT_NOW '%(%F_%H%M)T' -1  # JJJJ-MM-DD_HHMM (2017-10-19_1107)
 
 # Optionen für rsync; Verzeichnisse dürfen nicht angegeben werden
 # Vorgabewerte; Müssen normalerweise nicht geändert werden
@@ -127,7 +127,7 @@ POST_ACTION=''
 # Z.B. 'Daemon', 'daemon' oder 'd' für den Daemon-Modus
 # Z.B. 'Multi', 'multi' oder 'm' für den experimentellem Multi rsync-Modus
 # '', 'default' oder 'Normal' für den Normal-Modus
-#mode[nr]=''             # Modus (Normal, Snapshot oder Multi)
+#mode[nr]=''             # Modus (Normal, Snapshot, Daemon oder Multi)
 
 # [optional] Eigener Einhängepunkt
 # ACHTUNG: Bei target[nr] kein $MOUNT angeben. Entweder vollen Pfad verwenden
