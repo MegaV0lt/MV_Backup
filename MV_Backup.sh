@@ -951,7 +951,7 @@ if [[ -n "$MAILADRESS" ]] ; then
   printf -v ARCH 'Logs_%(%F-%H%M)T'."${LOGARCH_FMT:=tar.xz}"  # Archiv mit Datum und Zeit (kein :)
   ARCHIV="${TMPDIR}/${ARCH}"              # Archiv mit Pfad
   MAILFILE="${TMPDIR}/~Mail.txt"          # Text für die eMail
-  SUBJECT="Sicherungs-Bericht von $SELF_NAME auf ${HOSTNAME^^}"  # Betreff der Mail
+  SUBJECT="[${HOSTNAME^^}] Sicherungs-Bericht von $SELF_NAME" # Betreff der Mail
 
   if [[ ${MAXLOGSIZE:=$((1024*1024))} -gt 0 ]] ; then  # Wenn leer dann Vorgabe 1 MB. 0 = deaktiviert
     # Log(s) packen
@@ -987,7 +987,7 @@ if [[ -n "$MAILADRESS" ]] ; then
 
   if [[ ${#ERRLOGS[@]} -ge 1 ]] ; then
     echo -e "\n==> Zusätzlich wurde(n) ${#ERRLOGS[@]} Fehler-Log(s) erstellt!" >> "$MAILFILE"
-    SUBJECT="FEHLER bei Sicherung von $SELF_NAME auf ${HOSTNAME^^}"  # Neuer Betreff der Mail bei Fehlern
+    SUBJECT="[${HOSTNAME^^}] FEHLER bei Sicherung von $SELF_NAME"  # Neuer Betreff der Mail bei Fehlern
   fi
 
   if [[ ${#RSYNCRC[@]} -ge 1 && "$SHOWERRORS" == 'true' ]] ; then  # Profile mit Fehlern anzeigen
