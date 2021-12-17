@@ -11,7 +11,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=190917
+VERSION=211217
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -232,8 +232,8 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
 }
 
 f_countdown_wait() {
-  # Länge des Strings [80] plus alle Steuerzeichen [9] (ohne \)
-  printf '%-89b' "\n\e[30;46m  Profil \"${TITLE}\" wird in 5 Sekunden gestartet" ; printf '%b\n' '\e[0m'
+  # Länge des Strings [80] plus alle Steuerzeichen [21] (ohne \)
+  printf '%-101b' "\n\e[30;46m  Profil \e[97m${TITLE}\e[30;46m wird in 5 Sekunden gestartet" ; printf '%b\n' '\e[0m'
   echo -e '\e[46m \e[0m Zum Abbrechen [Strg] + [C] drücken\n\e[46m \e[0m Zum Pausieren [Strg] + [Z] drücken (Fortsetzen mit "fg")\n'
   for i in {5..1} ; do  # Countdown ;)
     echo -e -n "\rStart in \e[97;44m  $i  \e[0m Sekunden"
