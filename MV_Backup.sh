@@ -291,7 +291,7 @@ f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrund
     DF_LINE=(${MAPFILE[1]}) ; DF_FREE="${DF_LINE[3]%M}"  # Drittes Element ist der freie Platz (M)
     # echo "-> Auf dem Ziel (${TARGET}) sind $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
     if [[ $DF_FREE -lt $MINFREE_BG ]] ; then
-      touch "${TMPDIR}/.stopflag"  # Für den Multi-rsync-Modus benötigt
+      : > "${TMPDIR}/.stopflag"  # Für den Multi-rsync-Modus benötigt
       echo -e "$msgWRN Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
       { echo "Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
         echo -e "\n\n => Die Sicherung (${TITLE}) wird abgebrochen!" ;} >> "$ERRLOG"
