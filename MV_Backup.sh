@@ -80,9 +80,8 @@ f_mfs_kill() {  # Beenden der Hintergrundüberwachung
 }
 
 f_remove_slash() {  # "/" am Ende entfernen. $1=Variablenname ohne $
-  local __retval="$1" tmp="${!1}"  # $1=NAME, ${!1}=Inhalt
-  [[ ${#tmp} -ge 2 && "${tmp: -1}" == '/' ]] && tmp="${tmp%/}"
-  eval "$__retval='$tmp'"  # Ergebis in Variable aus $1
+  local -n ptr="$1"  # This uses local namerefs to avoid using command substitution for function output capture
+  [[ ${#ptr} -ge 2 && "${ptr: -1}" == '/' ]] && ptr="${ptr%/}"
 }
 
 # Wird in der Konsole angezeigt, wenn eine Option nicht angegeben oder definiert wurde
