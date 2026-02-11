@@ -11,7 +11,7 @@
 # => http://paypal.me/SteBlo <= Der Betrag kann frei gewählt werden.                    #
 #                                                                                       #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-VERSION=220407
+VERSION=260211
 
 # Dieses Skript sichert / synchronisiert Verzeichnisse mit rsync.
 # Dabei können beliebig viele Profile konfiguriert oder die Pfade direkt an das Skript übergeben werden.
@@ -29,7 +29,7 @@ fi
 # --- INTERNE VARIABLEN ---
 SELF="$(readlink /proc/$$/fd/255)" || SELF="$0"  # Eigener Pfad (besseres $0)
 SELF_NAME="${SELF##*/}"                          # skript.sh
-TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXX")"  # Ordner für temporäre Dateien
+TMPDIR="$(mktemp -d "${TMPDIR:-/tmp}/${SELF_NAME%.*}.XXXXXX")"  # Ordner für temporäre Dateien
 declare -a _RSYNC_OPT ERRLOGS LOGFILES RSYNCRC RSYNCPROF UNMOUNT  # Einige Array's
 declare -A _arg _target _JOBS  # Array _JOBS wird für den Multi rsync-Modus benötigt
 msgERR='\e[1;41m FEHLER! \e[0;1m'  # Anzeige "FEHLER!"
@@ -48,24 +48,24 @@ f_errtrap() {  # ERR-Trap mit "ON" aktivieren, ansonsten nur ins ERRLOG
 }
 
 f_exit() {  # Beenden und aufräumen $1 = ExitCode
-  local EXIT="${1:-0}"  # Wenn leer, dann 0
-  [[ "$EXIT" -eq 5 ]] && echo -e "$msgERR Ungültige Konfiguration! (\"${CONFIG}\") $2"
-  if [[ "$EXIT" -eq 3 ]] ; then  # Strg-C
+  local exit="${1:-0}"  # Wenn leer, dann 0
+  [[ "$exit" -eq 5 ]] && echo -e "$msgERR Ungültige Konfiguration! (\"${CONFIG}\") $2"
+  if [[ "$exit" -eq 3 ]] ; then  # Strg-C
     echo -e "\n=> Aufräumen und beenden [$$]"
     [[ -n "$POST_ACTION" ]] && echo 'Achtung: POST_ACTION wird nicht ausgeführt!'
     [[ -n "$MAILADRESS" ]] && echo 'Achtung: Es erfolgt kein eMail-Versand!'
   fi
-  [[ "$EXIT" -eq 2 ]] && echo -e "$msgERR (${5:-x}) in Zeile $3 ($4):\e[0m\n$2\n" >&2
-  if [[ "$EXIT" -ge 1 ]] ; then
+  [[ "$exit" -eq 2 ]] && echo -e "$msgERR (${5:-x}) in Zeile $3 ($4):\e[0m\n$2\n" >&2
+  if [[ "$exit" -ge 1 ]] ; then
     set -o posix ; set  > "/tmp/${SELF_NAME%.*}.env"  # Variablen speichern
     echo -e "$msgINF Skript- und Umgebungsvariablen wurden in \"/tmp/${SELF_NAME%.*}.env\" gespeichert!"
     [[ $EUID -ne 0 ]] && echo -e "$msgWRN Skript ohne root-Rechte gestartet!"
   fi
   [[ -n "${exfrom[*]}" ]] && rm "${exfrom[@]}" &>/dev/null
-  [[ -d "$TMPDIR" ]] && rm --recursive --force "$TMPDIR" &>/dev/null  # Ordner für temporäre Dateien
+  [[ -d "$TMPDIR" ]] && rm -rf "$TMPDIR" &>/dev/null  # Ordner für temporäre Dateien
   [[ -n "$MFS_PID" ]] && f_mfs_kill  # Hintergrundüberwachung beenden
-  [[ "$EXIT" -ne 4 ]] && rm --force "$PIDFILE" &>/dev/null  # PID-Datei entfernen
-  exit "$EXIT"
+  [[ "$exit" -ne 4 ]] && rm -f "$PIDFILE" &>/dev/null  # PID-Datei entfernen
+  exit "$exit"
 }
 
 f_mfs_kill() {  # Beenden der Hintergrundüberwachung
@@ -174,6 +174,12 @@ f_settings() {
           ;;
           M*) MODE='M' ; MODE_TXT='Multi rsync'  # Verwendet rsync-Optionen aus dem "normalen" Modus
             [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT=("${RSYNC_OPT[@]}") ; RSYNC_OPT=(${rsync_opt[i]}) ;}
+            # Prüfen, ob "chown" ein Symbolischer Link ist (Multi-Modus fünktioniert nicht mit BusyBox)
+            if [[ -L "$(type -p chown)" ]] ; then
+              echo -e "$msgWRN Es scheint, dass \"chown\" ein Symbolischer Link ist! (\"$(type -p chown)\")\e[0m"
+              echo -e "$msgINF Setze Modus auf 'Normal'!\e[0m"
+              MODE='N' ; MODE_TXT='Normal'
+            fi
           ;;
           D*) MODE='D' ; MODE_TXT='=> rsync-Daemon'  # rsync-Optionen für den Daemon Modus
             [[ -n "${rsync_opt[i]}" ]] && { _RSYNC_OPT_DAEMON=("${RSYNC_OPT_DAEMON[@]}") ; RSYNC_OPT_DAEMON=(${rsync_opt[i]}) ;}
@@ -194,15 +200,12 @@ f_del_old_backup() {  # Verzeichnisse älter als $DEL_OLD_BACKUP Tage löschen
   printf -v dt '%(%F %R.%S)T' -1
   echo "Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
   { echo "${dt}: Lösche Sicherungs-Dateien aus ${1}, die älter als $DEL_OLD_BACKUP Tage sind…"
-    find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 \
-      | xargs --null rm --recursive --force --verbose
+    find "$1" -maxdepth 1 -type d -mtime +"$DEL_OLD_BACKUP" -print0 | xargs -0 rm -rf
     # Logdatei(en) löschen (Wenn $TITLE im Namen)
     find "${LOG%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
-      -name "*${TITLE}*" ! -name "${LOG##*/}" -print0 \
-        | xargs --null rm --recursive --force --verbose
+      -name "*${TITLE}*" ! -name "${LOG##*/}" -print0 | xargs -0 rm -rf
     [[ -n "$SAVE_ACL" ]] && { find "${SAVE_ACL%/*}" -maxdepth 1 -type f -mtime +"$DEL_OLD_BACKUP" \
-      -name "*${TITLE}*" ! -name "${SAVE_ACL##*/}" -print0 \
-        | xargs --null rm --recursive --force --verbose ;} || :
+      -name "*${TITLE}*" ! -name "${SAVE_ACL##*/}" -print0 | xargs -0 rm -rf ;} || :
   } >> "$LOG"
 }
 
@@ -225,9 +228,9 @@ f_del_old_source() {  # Dateien älter als $DEL_OLD_SOURCE Tage löschen ($1=Que
       unset -v 'MAPFILE[i]'  # Datei aus der Liste entfernen!
     fi
   done
-  printf '%s\n' "${MAPFILE[@]}" # | xargs rm --verbose '{}' >> "$LOG"
+  printf '%s\n' "${MAPFILE[@]}" #! | xargs rm '{}' >> "$LOG"
   # Leere Ordner älter als $DEL_OLD_SOURCE in Quelle löschen
-  find "./" -type d -empty -mtime +"$DEL_OLD_SOURCE" # -delete >> "$LOG"
+  find "./" -type d -empty -mtime +"$DEL_OLD_SOURCE" #! -delete >> "$LOG"
 }
 
 f_countdown_wait() {
@@ -242,29 +245,29 @@ f_countdown_wait() {
 }
 
 f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
-  local DF_LINE DF_FREE DRYLOG MFTEXT='MINFREE' TDATA TRANSFERRED
+  local df_line df_free drylog mftext='MINFREE' tdata transferred
   if [[ -n "$DRY_RUN" ]] ; then  # In der *.conf angegeben
-    DRYLOG="${LOG%.*}.dry.log"  # Extra Log zum Auswerten
-    MFTEXT='DRYRUN'
+    drylog="${LOG%.*}.dry.log"  # Extra Log zum Auswerten
+    mftext='DRYRUN'
     echo -e "$msgINF Starte rsync Testlauf (DRYRUN)…\n"
-    rsync "${RSYNC_OPT[@]}" --dry-run --log-file="$DRYLOG" --exclude-from="$EXFROM" \
+    rsync "${RSYNC_OPT[@]}" --dry-run --log-file="$drylog" --exclude-from="$EXFROM" \
       --backup-dir="$BAK_DIR" "${SOURCE}/" "$R_TARGET" >/dev/null 2>> "$ERRLOG"
-    TRANSFERRED=($(tail --lines=15 "$DRYLOG" | grep "Total transferred file size:"))
-    # echo "Transferiert (DRY-RUN): ${TRANSFERRED[@]}"
-    case ${TRANSFERRED[7]} in
-      *K) TDATA=${TRANSFERRED[7]%K} ; MINFREE=$((${TDATA%.*}/1024 + 1)) ;;  # 1K-999K
-      *M) TDATA=${TRANSFERRED[7]%M} ; MINFREE=$((${TDATA%.*} + 1)) ;;       # MB +1
-      *G) TDATA=${TRANSFERRED[7]%G} ; MINFREE=$((${TDATA%.*}*1024 + ${TDATA#*.}0)) ;;
-      *T) TDATA=${TRANSFERRED[7]%T} ; MINFREE=$((${TDATA%.*}*1024*1024 + ${TDATA#*.}0*1024)) ;;
+    transferred=($(tail --lines=15 "$drylog" | grep "Total transferred file size:"))
+    # echo "Transferiert (DRY-RUN): ${transferred[@]}"
+    case ${transferred[7]} in
+      *K) tdata=${transferred[7]%K} ; MINFREE=$((${tdata%.*}/1024 + 1)) ;;  # 1K-999K
+      *M) tdata=${transferred[7]%M} ; MINFREE=$((${tdata%.*} + 1)) ;;       # MB +1
+      *G) tdata=${transferred[7]%G} ; MINFREE=$((${tdata%.*}*1024 + ${tdata#*.}0)) ;;
+      *T) tdata=${transferred[7]%T} ; MINFREE=$((${tdata%.*}*1024*1024 + ${tdata#*.}0*1024)) ;;
       *) MINFREE=1 ;;  # 0-999 Bytes
     esac
   fi
   if [[ $MINFREE -gt 0 ]] ; then  # Aus DRY_RUN oder *.conf
     mapfile -t < <(df -B M "$TARGET")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
-    DF_LINE=(${MAPFILE[1]}) ; DF_FREE="${DF_LINE[3]%M}"  # Drittes Element ist der freie Platz (M)
-    if [[ $DF_FREE -lt $MINFREE ]] ; then
-      echo -e "msgWRN Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (${MFTEXT}=${MINFREE})"
-      echo "Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (${MFTEXT}=${MINFREE})" >> "$ERRLOG"
+    df_line=(${MAPFILE[1]}) ; df_free="${df_line[3]%M}"  # Drittes Element ist der freie Platz (M)
+    if [[ $df_free -lt $MINFREE ]] ; then
+      echo -e "msgWRN Auf dem Ziel (${TARGET}) sind nur $df_free MegaByte frei! (${mftext}=${MINFREE})"
+      echo "Auf dem Ziel (${TARGET}) sind nur $df_free MegaByte frei! (${mftext}=${MINFREE})" >> "$ERRLOG"
       if [[ -z "$SKIP_FULL" ]] ; then  # In der Konfig definiert
         echo -e "\nDie Sicherung (${TITLE}) ist möglicherweise unvollständig!" >> "$ERRLOG"
         echo -e 'Bitte überprüfen Sie auch die Einträge in den Log-Dateien!\n' >> "$ERRLOG"
@@ -273,7 +276,7 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
         FINISHEDTEXT='abgebrochen!'  # Text wird am Ende ausgegeben
       fi
     else
-      [[ -n "$DRYLOG" ]] && echo -e "Testlauf (DRYRUN) von rsync ergab:\nBenötigt: $MINFREE MB Verfügbar: $DF_FREE MB" >> "$LOG"
+      [[ -n "$drylog" ]] && echo -e "Testlauf (DRYRUN) von rsync ergab:\nBenötigt: $MINFREE MB Verfügbar: $df_free MB" >> "$LOG"
       unset -v 'SKIP_FULL'  # Genug Platz! Variable löschen, falls gesetzt
     fi  # DF_FREE
   elif [[ $MINFREE_BG -gt 0 ]] ; then  # Prüfung im Hintergrund
@@ -285,15 +288,15 @@ f_check_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist
 }
 
 f_monitor_free_space() {  # Prüfen ob auf dem Ziel genug Platz ist (Hintergrundprozess [&])
-  local DF_LINE DF_FREE
+  local df_line df_free
   while true ; do
     mapfile -t < <(df -B M "$TARGET")  # Ausgabe von df (in Megabyte) in Array (Zwei Zeilen)
-    DF_LINE=(${MAPFILE[1]}) ; DF_FREE="${DF_LINE[3]%M}"  # Drittes Element ist der freie Platz (M)
-    # echo "-> Auf dem Ziel (${TARGET}) sind $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
-    if [[ $DF_FREE -lt $MINFREE_BG ]] ; then
+    df_line=(${MAPFILE[1]}) ; df_free="${df_line[3]%M}"  # Drittes Element ist der freie Platz (M)
+    # echo "-> Auf dem Ziel (${TARGET}) sind $df_free MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
+    if [[ $df_free -lt $MINFREE_BG ]] ; then
       : > "${TMPDIR}/.stopflag"  # Für den Multi-rsync-Modus benötigt
-      echo -e "$msgWRN Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
-      { echo "Auf dem Ziel (${TARGET}) sind nur $DF_FREE MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
+      echo -e "$msgWRN Auf dem Ziel (${TARGET}) sind nur $df_free MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
+      { echo "Auf dem Ziel (${TARGET}) sind nur $df_free MegaByte frei! (MINFREE_BG=${MINFREE_BG})"
         echo -e "\n\n => Die Sicherung (${TITLE}) wird abgebrochen!" ;} >> "$ERRLOG"
       killall --exact rsync >/dev/null 2>> "$ERRLOG"  # Alle rsync-Prozesse beenden
       if pgrep --exact rsync ; then
@@ -313,8 +316,8 @@ f_source_config() {  # Konfiguration laden
 }
 
 # --- START ---
-[[ -e "/tmp/${SELF_NAME%.*}.log" ]] && rm --force "/tmp/${SELF_NAME%.*}.log" &>/dev/null
-[[ -e "/tmp/${SELF_NAME%.*}.env" ]] && rm --force "/tmp/${SELF_NAME%.*}.env" &>/dev/null
+[[ -e "/tmp/${SELF_NAME%.*}.log" ]] && rm -f "/tmp/${SELF_NAME%.*}.log" &>/dev/null
+[[ -e "/tmp/${SELF_NAME%.*}.env" ]] && rm -f "/tmp/${SELF_NAME%.*}.env" &>/dev/null
 f_errtrap OFF  # Err-Trap deaktivieren und nur loggen
 SCRIPT_TIMING[0]=$SECONDS  # Startzeit merken (Sekunden)
 
@@ -394,7 +397,7 @@ echo -e "\e[46m \e[0m $CONFLOADED Konfiguration:\e[1m\t${CONFIG}\e[0m\n"
 if [[ ! -L /dev/fd ]] ; then
   echo -e "$msgWRN Der Symbolische Link \"/dev/fd -> /proc/self/fd\" fehlt!"
   echo -e "$msgINF Erstelle Symbolischen Link \"/dev/fd\"…"
-  ln --symbolic --force /proc/self/fd /dev/fd || \
+  ln -sf /proc/self/fd /dev/fd || \
     { echo -e "$msgERR Fehler beim erstellen des Symbolischen Links!\e[0m" >&2
       f_exit 1; }
 fi
@@ -421,7 +424,7 @@ while getopts "$optspec" opt ; do
       [[ -z "${MAN_SOURCE[*]}" ]] && \
         { echo -e "$msgERR Keine Quellverzeichnisse gefunden!" >&2 ; f_exit 1 ;}
       f_remove_slash TARGET         # "/" am Ende entfernen
-      P='customBak' ; TITLE='Benutzerdefinierte Sicherung'
+      P=(customBak) ; TITLE='Benutzerdefinierte Sicherung'
       LOG="${TARGET}/${TITLE}_log.txt"
       MOUNT='' ; MODE='N' ; MODE_TXT='Benutzerdefiniert'
     ;;
@@ -436,7 +439,7 @@ while getopts "$optspec" opt ; do
            # echo "Option: --${OPTARG}, Wert: ${DEL_OLD_SOURCE}" >&2;
          ;;
          del-old-source=*)          # Parameter nach "="
-           val="${OPTARG#*=}" ; DEL_OLD_SOURCE="${OPTARG%=$val}"
+           val="${OPTARG#*=}" ; DEL_OLD_SOURCE="${OPTARG%="$val"}"
            # echo "Option: --${opt}, Wert: ${DEL_OLD_SOURCE}" >&2
          ;;
          *) if [[ "$OPTERR" == 1 ]] ; then
@@ -586,7 +589,7 @@ for PROFIL in "${P[@]}" ; do
 
     # Festplatte (Ziel) eingebunden?
     if [[ -n "$MOUNT" && "$TARGET" == "$MOUNT"* ]] ; then
-      if ! mountpoint --quiet "$MOUNT" ; then
+      if ! mountpoint -q "$MOUNT" ; then
         echo -e -n "$msgINF Versuche Sicherungsziel (${MOUNT}) einzuhängen…"
         mount "$MOUNT" &>/dev/null \
           || { echo -e "\n$msgERR Das Sicherungsziel konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${MOUNT}\")" >&2 ; f_exit 1 ;}
@@ -596,10 +599,10 @@ for PROFIL in "${P[@]}" ; do
     fi
     # Ist die Quelle ein FTP und eingebunden?
     if [[ -n "$FTPSRC" ]] ; then
-      if ! mountpoint --quiet "$FTPMNT" ; then
+      if ! mountpoint -q "$FTPMNT" ; then
         echo -e -n "$msgINF Versuche FTP-Quelle (${FTPSRC}) unter \"${FTPMNT}\" einzuhängen…"
         curlftpfs "$FTPSRC" "$FTPMNT" &>/dev/null    # FTP einhängen
-        grep --quiet "$FTPMNT" /proc/mounts \
+        grep -q "$FTPMNT" /proc/mounts \
           || { echo -e "\n$msgERR Die FTP-Quelle konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${FTPMNT}\")" >&2 ; f_exit 1 ;}
         echo -e "OK.\nDie FTP-Quelle (${FTPSRC}) wurde erfolgreich unter (\"${FTPMNT}\") eingehängt."
         UMOUNT_FTP=1  # Nach Sicherung wieder aushängen
@@ -607,7 +610,7 @@ for PROFIL in "${P[@]}" ; do
     fi
     # Festplatte (Ziel) für zusätzliche Sicherung eingebunden?
     if [[ -n "$EXTRA_MOUNT" && "$EXTRA_TARGET" == "$EXTRA_MOUNT"* ]] ; then
-      if ! mountpoint --quiet "$EXTRA_MOUNT" ; then
+      if ! mountpoint -q "$EXTRA_MOUNT" ; then
         echo -e -n "$msgINF Versuche zusätzliches Sicherungsziel (${EXTRA_MOUNT}) einzuhängen…"
         mount "$EXTRA_MOUNT" &>/dev/null \
           || { echo -e "\n$msgERR Das zusätzliche Sicherungsziel konnte nicht eingebunden werden! (RC: $?)\e[0m (\"${EXTRA_MOUNT}\")" >&2
@@ -620,15 +623,15 @@ for PROFIL in "${P[@]}" ; do
 
   ERRLOG="${LOG%.*}.err.log"  # Fehlerlog im Logverzeichnis der Sicherung
   # Ggf. Zielverzeichnis erstellen
-  [[ "$MODE" != 'D' && ! -d "$TARGET" ]] && { mkdir --parents --verbose "$TARGET" >/dev/null || f_exit 1 ;}
-  [[ -e "${TMPDIR}/.stopflag" ]] && rm --force "${TMPDIR}/.stopflag" &>/dev/null
+  [[ "$MODE" != 'D' && ! -d "$TARGET" ]] && { mkdir -p "$TARGET" >/dev/null || f_exit 1 ;}
+  [[ -e "${TMPDIR}/.stopflag" ]] && rm -f "${TMPDIR}/.stopflag" &>/dev/null
   unset -v 'FINISHEDTEXT' 'MFS_PID'
   printf -v dt '%(%F %R)T' -1  # Datum für die erste Zeile im Log
 
   case $MODE in
     N) # Normale Sicherung (inkl. customBak)
       # Ggf. Verzeichnis für gelöschte Dateien erstellen
-      [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" >/dev/null || f_exit 1 ;}
+      [[ ! -d "$BAK_DIR" ]] && { mkdir -p "$BAK_DIR" >/dev/null || f_exit 1 ;}
       R_TARGET="${TARGET}/${FILES_DIR}"  # Ordner für die gesicherten Dateien
 
       f_countdown_wait  # Countdown vor dem Start anzeigen
@@ -675,7 +678,7 @@ for PROFIL in "${P[@]}" ; do
     ;;
     S) # Snapshot Sicherung
       # Temporäre Verzeichnisse, die von fehlgeschlagenen Sicherungen noch vorhanden sind löschen
-      rm --recursive --force "${TARGET}/tmp_????-??-??*" &>/dev/null
+      rm -rf "${TARGET}/tmp_????-??-??*" &>/dev/null
 
       # Zielverzeichnis ermitteln: Wenn erste Sicherung des Tages, dann ohne Uhrzeit
       printf -v dt2 '%(%Y-%m-%d)T %(%Y-%m-%d_%H-%M)T' -1
@@ -690,7 +693,7 @@ for PROFIL in "${P[@]}" ; do
       if [[ -n "$LASTBACKUP" ]] ; then
         # Mittels dryRun überprüfen, ob sich etwas geändert hat
         echo "Prüfe, ob es Änderungen zu $LASTBACKUP gibt…"
-        TFL="$(mktemp "${TMPDIR}/tmp.rsync.XXXX")"
+        TFL="$(mktemp "${TMPDIR}/tmp.rsync.XXXXXX")"
         rsync "${RSYNC_OPT_SNAPSHOT[@]}" --dry-run --exclude-from="$EXFROM" \
           --link-dest="$LASTBACKUP" "$SOURCE" "$TMPBAKDIR" &> "$TFL"
         # Wenn es keine Unterschiede gibt, ist die 4. Zeile immer diese:
@@ -723,7 +726,7 @@ for PROFIL in "${P[@]}" ; do
     ;;
     M) # Multi rsync (Experimentell)! Quelle: www.krazyworks.com/making-rsync-faster
       # Ggf. Verzeichnis für gelöschte Dateien erstellen
-      [[ ! -d "$BAK_DIR" ]] && { mkdir --parents "$BAK_DIR" >/dev/null || f_exit 1 ;}
+      [[ ! -d "$BAK_DIR" ]] && { mkdir -p "$BAK_DIR" >/dev/null || f_exit 1 ;}
 
       # Variablen depth, TARGET, maxdthreads und sleeptime definieren
       depth=1 ; cnt=0 ; sleeptime=5  # Wartezeit zum prüfen der gleichzeitig laufenden rsync-Prozesse
@@ -741,7 +744,7 @@ for PROFIL in "${P[@]}" ; do
       # Keine Sicherung, wenn zu wenig Platz und "SKIP_FULL" gesetzt ist
       if [[ -z "$SKIP_FULL" ]] ; then
         mapfile -t < "$EXFROM"  # Ausschlussliste einlesen
-        mv --force "$EXFROM" "${_EXFROM:=${EXFROM}.$RANDOM}" >/dev/null  # Ausschlussliste für ./
+        mv -f "$EXFROM" "${_EXFROM:=${EXFROM}.$RANDOM}" >/dev/null  # Ausschlussliste für ./
         for i in "${!MAPFILE[@]}" ; do
           [[ "${MAPFILE[i]:0:1}" != '/' ]] && echo "${MAPFILE[i]}" >> "$EXFROM"  # Beginnt nicht mit "/"
         done
@@ -772,7 +775,7 @@ for PROFIL in "${P[@]}" ; do
 
             if [[ ! -d "${R_TARGET}/${subfolder}" ]] ; then
               # Zielordner erstellen und Rechte/Eigentümer von Quelle übernehmen
-              mkdir --parents "${R_TARGET}/${subfolder}" >/dev/null
+              mkdir -p "${R_TARGET}/${subfolder}" >/dev/null
               chown --reference="${SOURCE}/${subfolder}" "${R_TARGET}/${subfolder}"
               chmod --reference="${SOURCE}/${subfolder}" "${R_TARGET}/${subfolder}"
             fi
@@ -799,7 +802,7 @@ for PROFIL in "${P[@]}" ; do
           while IFS= read -r -d '' ; do
             if [[ ! -e "$REPLY" ]] ; then  # Datei ist im Ziel aber nicht (mehr) auf der Quelle
               echo -e "$msgINF Datei \"${REPLY}\" nicht im Quellverzeichnis.\nVerschiebe nach $BAK_DIR"
-              mv --force --verbose "${R_TARGET}/${REPLY}" "$BAK_DIR" >> "${LOG%.log}_mv.log" 2>> "$ERRLOG"
+              mv -f "${R_TARGET}/${REPLY}" "$BAK_DIR" >> "${LOG%.log}_mv.log" 2>> "$ERRLOG"
             fi
           done < <(find "$R_TARGET" -maxdepth 1 -type f -printf '%P\0')  # %P = Datei ohne führendes "./" und ohne Pfad
 
@@ -823,7 +826,7 @@ for PROFIL in "${P[@]}" ; do
           fi
         done
         # Logs zusammenfassen (Jeder rsync-Prozess hat ein eigenes Log erstellt)
-        [[ -f "$LOG" ]] && mv --force "$LOG" "${LOG}.old" >/dev/null  # Log schon vorhanden
+        [[ -f "$LOG" ]] && mv -f "$LOG" "${LOG}.old" >/dev/null  # Log schon vorhanden
         shopt -s nullglob  # Nichts tun, wenn nichts gefunden wird
         for log in "${LOG%.log}"_*.log ; do
           { echo "== Logfile: $log ==" ; cat "$log" ;} >> "$LOG"
@@ -859,7 +862,7 @@ for PROFIL in "${P[@]}" ; do
   ### Zusätzliche Sicherung mit tar ###
   if [[ -n "$EXTRA_TARGET" ]] ; then
     if [[ "$MODE" == 'S' ]] ; then  # Nicht in Snapshot-Modus
-      echo "$msgERR Zusätzliche Sicherung wird im Snapshot-Modus nicht unterstützt!\e[0m" >&2
+      echo -e "$msgERR Zusätzliche Sicherung wird im Snapshot-Modus nicht unterstützt!\e[0m" >&2
       sleep 10
     else
       printf -v dt '%(%Y%m%d_%H%M%S)T' -1  # Datum und Zeit (20171017_131601)
@@ -867,22 +870,22 @@ for PROFIL in "${P[@]}" ; do
       echo "Starte zusätzliche Sicherung nach ${EXTRA_TARGET}…" >> "$LOG"
       echo -e "$msgINF Starte zusätzliche Sicherung nach:\n  \"${EXTRA_TARGET}\""
       # Zielordner suchen und erstellen
-      [[ ! -d "$EXTRA_TARGET" ]] && { mkdir --parents "$EXTRA_TARGET" >/dev/null || f_exit 1 ;}
+      [[ ! -d "$EXTRA_TARGET" ]] && { mkdir -p "$EXTRA_TARGET" >/dev/null || f_exit 1 ;}
 
       # Prüfen, ob maximale inkrementelle Sicherungen vorhanden sind
       cd "$EXTRA_TARGET" || f_exit 1
-      mapfile -t < <(ls -1 --sort=time ./*"$EXTRA_ARCHIV" 2>/dev/null || :)  # "|| :" Fehlercode unterdrücken
+      mapfile -t < <(ls -1 -t ./*"$EXTRA_ARCHIV" 2>/dev/null || :)  # "|| :" Fehlercode unterdrücken
       if [[ "${#MAPFILE[@]}" -gt $EXTRA_MAXINC ]] ; then
         echo "Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})" >> "$LOG"
         echo -e "$msgINF Anzahl max. inkrementelle Sicherungen erreicht! (${EXTRA_MAXINC})"
         if [[ $EXTRA_MAXBAK -gt 0 ]] ; then  # Sicherung in Ordner verschieben
           PREVDIR="${MAPFILE[0]%.$EXTRA_ARCHIV}"  # Archiverweiterung entfernen
           if [[ ! -d "$PREVDIR" ]] ; then
-            mkdir --parents "$PREVDIR" >/dev/null  # Ordner erstellen
+            mkdir -p "$PREVDIR" >/dev/null  # Ordner erstellen
             echo -e "$msgINF Verschiebe Sicherung nach $PREVDIR"
             { echo "Verschiebe Sicherung nach ${EXTRA_TARGET}/${PREVDIR}"
-              mv --force --verbose ./*".$EXTRA_ARCHIV" "$PREVDIR"  # Alle Archive verschieben
-              rm --force --verbose './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
+              mv -f ./*".$EXTRA_ARCHIV" "$PREVDIR"  # Alle Archive verschieben
+              rm -f './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
             } >> "$LOG"
           else
             echo "$msgWRN Verzeichnis $PREVDIR existiert bereits!" >&2
@@ -890,19 +893,19 @@ for PROFIL in "${P[@]}" ; do
         else  # EXTRA_MAXBAK -gt 0
           echo -e "$msgINF Lösche letzte Sicherung! (EXTRA_MAXBAK=0)"
           { echo 'Lösche letzte Sicherung! (EXTRA_MAXBAK=0)'
-            rm --force --verbose ./*".$EXTRA_ARCHIV"  # Alle Archive löschen
-            rm --force --verbose './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
+            rm -f ./*".$EXTRA_ARCHIV"  # Alle Archive löschen
+            rm -f './.snapshot.file'  # Löschen, um eine Vollsicherung zu erhalten
           }  >> "$LOG"
         fi
         # Prüfen, ob max. Sicherungen vorhanden sind
         if [[ $EXTRA_MAXBAK -gt 0 ]] ; then
-          mapfile -t < <(ls -1 --directory --reverse --sort=time ./*/ 2>/dev/null || :)  # "|| :" Fehlercode unterdrücken
+          mapfile -t < <(ls -1 -d -r -t ./*/ 2>/dev/null || :)  # "|| :" Fehlercode unterdrücken
           if [[ "${#MAPFILE[@]}" -gt $EXTRA_MAXBAK ]] ; then
             echo -e "$msgINF Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
             echo -e "$msgINF Lösche älteste Sicherung ${MAPFILE[0]}"
             { echo "Anzahl max. Sicherungen erreicht! (${EXTRA_MAXBAK})"
               echo "Lösche älteste Sicherung ${MAPFILE[0]}"
-              rm --recursive --force --verbose "${MAPFILE[0]}"
+              rm -rf "${MAPFILE[0]}"
             } >> "$LOG"
           fi
         fi # EXTRA_MAXBAK -gt 0
@@ -997,9 +1000,8 @@ if [[ -n "$MAILADRESS" ]] ; then
   fi  # SHOWERRORS
 
   if [[ "$SHOWOS" == 'true' && -f '/etc/os-release' ]] ; then
-    while read -r ; do
-      [[ ${REPLY^^} =~ PRETTY_NAME ]] && { OSNAME="${REPLY/*=}"
-        OSNAME="${OSNAME//\"/}" ; break ;}
+    while IFS='=' read -r key value ; do
+      [[ ${key^^} =~ PRETTY_NAME ]] && { OSNAME="${value//\"/}" ; break ;}
     done < /etc/os-release
     echo -e "\n==> Auf ${HOSTNAME^^} verwendetes Betriebssystem:\n${OSNAME:-'Unbekannt'}" >> "$MAILFILE"
   fi  # SHOWOS
@@ -1029,12 +1031,12 @@ if [[ -n "$MAILADRESS" ]] ; then
       LOGDIR="${LOGFILES[i]%/*}" ; [[ "${LOGDIRS[*]}" =~ $LOGDIR ]] && continue
       LOGDIRS+=("$LOGDIR")
       { echo -e "\n==> Inhalt von ${LOGDIR}:"
-        ls -l --human-readable "$LOGDIR"
+        ls -l -h "$LOGDIR"
         # Anzeige der Belegung des Sicherungsverzeichnisses und Unterordner
         echo -e "\n==> Belegung von ${LOGDIR}:"
-        du --human-readable --summarize "$LOGDIR"
+        du -h -s "$LOGDIR"
         for dir in "${LOGDIR}"/*/ ; do
-          du --human-readable --summarize "$dir"
+          du -h -s "$dir"
         done
       } >> "$MAILFILE"
     fi  # SHOWCONTENT
@@ -1080,7 +1082,7 @@ if [[ -n "$MAILADRESS" ]] ; then
         for var in MAILADRESS SUBJECT MAILFILE ARCHIV ; do
           CUSTOM_MAIL=("${CUSTOM_MAIL[@]/$var/${!var}}")  # Platzhalter ersetzen
         done
-        eval "${CUSTOM_MAIL[@]}"  # Gesamte Zeile ausführen
+        "${CUSTOM_MAIL[0]}" "${CUSTOM_MAIL[@]:1}"  # Gesamte Zeile ausführen
       ;;
       *) echo -e "\nUnbekanntes Mailprogramm: \"${MAILPROG}\"" ;;
     esac
@@ -1093,7 +1095,7 @@ fi
 if [[ ${#UNMOUNT[@]} -ge 1 ]] ; then
   echo -e "$msgINF Manuell eingehängte Sicherungsziele werden wieder ausgehängt…"
   for volume in "${UNMOUNT[@]}" ; do
-    umount --force "$volume"
+    umount -f "$volume"
   done
 fi
 
